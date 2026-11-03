@@ -6,6 +6,7 @@ struct IdeesView: View {
     let genre: String   // "voyage" ou "weekend"
     let moi: String
     @Environment(\.colorScheme) private var scheme
+    @Query private var visites: [Visite]
     @Query(sort: \Idee.cree, order: .reverse) private var toutes: [Idee]
     @Query private var reactions: [Reaction]
     @State private var ajout = false
@@ -19,6 +20,8 @@ struct IdeesView: View {
 
     var body: some View {
         ScrollView {
+            IciAussi(onglet: genre == "voyage" ? "voyages" : "weekends", moi: moi, visites: visites)
+                .frame(maxWidth: .infinity, alignment: .leading).padding([.horizontal, .top], 16)
             if idees.isEmpty {
                 ContentUnavailableView {
                     Label(genre == "voyage" ? "Pas encore de voyage" : "Pas encore de week-end",

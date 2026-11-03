@@ -49,6 +49,7 @@ extension ModelContext {
     /// À utiliser à la place de `save()` pour tout changement fait par quelqu'un de la famille :
     /// enregistre, puis met le changement dans la file d'envoi vers la maison commune.
     func enregistrer() {
+        Journal.noter(dans: self)
         // Les suppressions d'abord : un objet remplacé (même nom, ex. la visite du jour) doit finir « enregistré ».
         var elements: [String] = []
         for m in deletedModelsArray {
@@ -183,8 +184,8 @@ extension Visite: Synchronisable {
     static let typeEnregistrement = "Visite"
     var idSynchro: String { cle.isEmpty ? membre : cle }
     var aPartager: Bool { true }
-    func remplir(_ r: CKRecord) { r["membre"] = membre; r["quand"] = quand }
-    func lire(_ r: CKRecord) { membre = r.s("membre"); quand = r.date("quand") }
+    func remplir(_ r: CKRecord) { r["membre"] = membre; r["quand"] = quand; r["ecran"] = ecran }
+    func lire(_ r: CKRecord) { membre = r.s("membre"); quand = r.date("quand"); ecran = r.s("ecran") }
 }
 
 extension DocumentBrut: Synchronisable {

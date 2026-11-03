@@ -13,6 +13,7 @@ struct ChezNousView: View {
     @State private var importer = false
     @State private var bilan: String?
     @State private var confirmerChangement = false
+    @State private var alertes = Alertes.actives
 
     private var foyer: String { Famille.foyer(de: moi) ?? "" }
     private func de(_ c: String) -> [[String: Any]] { docs.filter { $0.collection == c && $0.foyer == foyer }.map(\.valeurs) }
@@ -103,6 +104,10 @@ extension ChezNousView {
                     Label("Inviter la famille", systemImage: "person.badge.plus")
                 }
             }
+            Toggle(isOn: Binding(get: { alertes }, set: { alertes = $0; Alertes.actives = $0 })) {
+                Label("Me prévenir quand quelqu'un range, mange ou prévoit quelque chose", systemImage: "bell.badge")
+            }
+            .tint(Theme.ok)
             Button { Task { await synchro.synchroniserMaintenant() } } label: {
                 Label("Synchroniser maintenant", systemImage: "arrow.triangle.2.circlepath")
             }

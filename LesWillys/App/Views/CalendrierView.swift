@@ -6,6 +6,7 @@ import SwiftData
 struct CalendrierView: View {
     let moi: String
     @Environment(\.colorScheme) private var scheme
+    @Query private var visites: [Visite]
     @Query(sort: \Evenement.debut) private var evenements: [Evenement]
     @State private var mois = Calendar.current.date(from: Calendar.current.dateComponents([.year, .month], from: .now))!
     @State private var jourChoisi = Jour.aujourdhui
@@ -16,6 +17,7 @@ struct CalendrierView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
+                IciAussi(onglet: "calendrier", moi: moi, visites: visites)
                 entete
                 grille
                 legende

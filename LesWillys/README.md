@@ -37,6 +37,19 @@ natives. Tout le reste (jardin, récoltes, restos, entretien, papiers, IBAN…) 
 et pourra recevoir son écran plus tard. Reprendre deux fois le même fichier ne crée pas de doublons.
 Les sauvegardes ne doivent jamais être ajoutées à ce dépôt (le `.gitignore` les exclut).
 
+## La vie de la maison : qui fait quoi, qui est là
+
+- **« Ça bouge à la maison »** (accueil) : le fil de ce que fait chacun — « Loulou a rangé
+  3 articles dans les armoires », « Robin propose un week-end : Ardennes ». Les gestes répétés
+  d'une même personne en dix minutes sont regroupés sur une seule ligne. Toucher une ligne ouvre l'onglet.
+- **« En ce moment »** : un point vert sur l'aimant de ceux qui ont l'app ouverte, et ce qu'ils
+  regardent (« Manhattan regarde le calendrier »). Sur chaque onglet, un bandeau montre qui
+  regarde la même chose que toi.
+- **Notifications** : app fermée, une notification par geste (regroupée par onglet) ; app
+  ouverte, une bannière glisse en haut de l'écran. Réglage dans *Chez nous › Partage familial*.
+
+Code : `Shared/Activite.swift` (fil et présence), `App/Synchro/Alertes.swift` (bannière et notifications).
+
 ## Le look et les règles de design d'Apple
 
 - **Polices de l'app web** : Bricolage Grotesque (titres), Figtree (texte) et Gochi Hand

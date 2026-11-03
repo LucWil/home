@@ -274,3 +274,42 @@ extension Color {
         self.init(uiColor: UIColor { $0.userInterfaceStyle == .dark ? UIColor(Color(hex: dark)) : UIColor(Color(hex: light)) })
     }
 }
+
+/// Le petit point vert « en ligne » sur un aimant, qui respire doucement.
+struct PointVert: View {
+    @State private var respire = false
+    var body: some View {
+        Circle().fill(Theme.ok)
+            .frame(width: 11, height: 11)
+            .overlay(Circle().stroke(.white, lineWidth: 2))
+            .scaleEffect(respire ? 1.12 : 0.92)
+            .onAppear {
+                guard !UIAccessibility.isReduceMotionEnabled else { return }
+                withAnimation(.easeInOut(duration: 1.4).repeatForever(autoreverses: true)) { respire = true }
+            }
+            .accessibilityLabel("en ligne")
+    }
+}
+
+/// « Loulou regarde aussi le calendrier » : les aimants de ceux qui sont sur le même onglet, en ce moment.
+struct IciAussi: View {
+    let onglet: String
+    let moi: String
+    let visites: [Visite]
+    var body: some View {
+        TimelineView(.periodic(from: .now, by: 30)) { _ in
+            let la = visites.filter { $0.membre != moi && $0.ecran == onglet && Presence.estLa($0) }
+            if !la.isEmpty {
+                HStack(spacing: 8) {
+                    PileAimants(membres: la.map(\.membre), taille: 24)
+                        .overlay(alignment: .bottomTrailing) { PointVert().offset(x: 3, y: 3) }
+                    Text("\(la.compactMap { Famille.membre($0.membre)?.nom }.formatted(.list(type: .and).locale(Locale(identifier: "fr_BE")))) \(la.count > 1 ? "regardent" : "regarde") aussi")
+                        .font(.willys(.footnote, poids: .semibold))
+                }
+                .padding(.horizontal, 12).padding(.vertical, 6)
+                .background(Theme.ok.opacity(0.14), in: Capsule())
+                .transition(.colle)
+            }
+        }
+    }
+}

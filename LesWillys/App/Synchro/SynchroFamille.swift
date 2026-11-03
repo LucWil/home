@@ -85,6 +85,7 @@ final class SynchroFamille: ObservableObject {
         }
         ajouter(Evenement.self); ajouter(Idee.self); ajouter(Reaction.self); ajouter(Article.self); ajouter(Boni.self)
         ajouter(Foyer.self); ajouter(Recette.self); ajouter(Photo.self); ajouter(Visite.self); ajouter(DocumentBrut.self)
+        ajouter(Activite.self)
         FileSynchro.ajouter(lignes)
         envoyerFile()
     }
@@ -146,7 +147,9 @@ final class SynchroFamille: ObservableObject {
 
     fileprivate func appliquer(modifies: [CKRecord], supprimes: [CKRecord.ID]) {
         let ctx = Base.app.mainContext
+        var nouvelles: [CKRecord] = []
         for r in modifies {
+            if r.recordType == Activite.typeEnregistrement { nouvelles.append(r) }
             if !estProprietaire, proprietaireZone == nil, r.recordID.zoneID.zoneName == Self.nomZone {
                 proprietaireZone = r.recordID.zoneID.ownerName; etat = .pret
             }
@@ -161,6 +164,7 @@ final class SynchroFamille: ObservableObject {
         }
         try? ctx.save()             // pas `enregistrer()` : on ne renvoie pas ce qui vient d'arriver
         derniereSynchro = .now
+        Alertes.annoncer(nouvelles)
         Base.rafraichirWidgets()
     }
 
@@ -220,6 +224,7 @@ final class SynchroFamille: ObservableObject {
         case Photo.typeEnregistrement: return chercher(Photo.self)
         case Visite.typeEnregistrement: return chercher(Visite.self)
         case DocumentBrut.typeEnregistrement: return chercher(DocumentBrut.self)
+        case Activite.typeEnregistrement: return chercher(Activite.self)
         default: return nil
         }
     }
@@ -237,6 +242,7 @@ final class SynchroFamille: ObservableObject {
         case Recette.typeEnregistrement: let r = Recette(titre: "", par: ""); r.cle = id; o = r
         case Photo.typeEnregistrement: let p = Photo(legende: "", qui: [], par: ""); p.cle = id; o = p
         case Visite.typeEnregistrement: o = Visite(membre: id)
+        case Activite.typeEnregistrement: let a = Activite(membre: "", genre: "", onglet: "accueil", detail: ""); a.cle = id; o = a
         case DocumentBrut.typeEnregistrement:
             let m = id.split(separator: ":", maxSplits: 1).map(String.init)
             o = DocumentBrut(collection: m.first ?? "", cle: m.count > 1 ? m[1] : id, json: Data(), foyer: "")

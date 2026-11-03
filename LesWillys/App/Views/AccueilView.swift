@@ -7,10 +7,12 @@ struct AccueilView: View {
     let moi: String
     @Environment(\.modelContext) private var ctx
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.openURL) private var ouvrir
     @Query(sort: \Evenement.debut) private var evenements: [Evenement]
     @Query(sort: \Idee.cree, order: .reverse) private var idees: [Idee]
     @Query(sort: \Recette.cree, order: .reverse) private var recettes: [Recette]
     @Query(sort: \Visite.quand, order: .reverse) private var visites: [Visite]
+    @Query(sort: \Activite.quand, order: .reverse) private var activites: [Activite]
     @Query(sort: \Photo.cree, order: .reverse) private var photos: [Photo]
     @Query private var reactions: [Reaction]
 
@@ -27,6 +29,7 @@ struct AccueilView: View {
                     HStack(alignment: .top, spacing: 16) { semaine; VStack(spacing: 16) { nouveau; passages } }
                     VStack(spacing: 16) { semaine; nouveau; passages }
                 }
+                filActivite
                 petitsMots
                 mur
             }
@@ -126,20 +129,65 @@ struct AccueilView: View {
         }
     }
 
+    /// « En ce moment » : qui a l'app ouverte et où ; puis qui est passé récemment.
     private var passages: some View {
-        Porte {
-            Text("Qui est passé").font(.willys(.headline))
-            let autres = visites.filter { $0.membre != moi }.prefix(6)
-            if autres.isEmpty {
-                Text("Personne d'autre pour l'instant.").foregroundStyle(.secondary)
-            } else {
-                ForEach(Array(autres)) { v in
-                    HStack {
-                        Aimant(membre: v.membre, taille: 24)
+        TimelineView(.periodic(from: .now, by: 30)) { _ in
+            let autres = visites.filter { $0.membre != moi }
+            let la = autres.filter(Presence.estLa)
+            let passes = autres.filter { !Presence.estLa($0) }.prefix(4)
+            Porte {
+                Text(la.isEmpty ? "Qui est passé" : "En ce moment").font(.willys(.headline))
+                ForEach(la) { v in
+                    HStack(spacing: 10) {
+                        Aimant(membre: v.membre, taille: 30)
+                            .overlay(alignment: .bottomTrailing) { PointVert() }
+                        Text("**\(Famille.membre(v.membre)?.nom ?? "")** \(Presence.libelle(v.ecran))")
+                    }
+                    .transition(.colle)
+                }
+                if !la.isEmpty && !passes.isEmpty { Divider() }
+                ForEach(Array(passes)) { v in
+                    HStack(spacing: 10) {
+                        Aimant(membre: v.membre, taille: 24).opacity(0.85)
                         Text(Famille.membre(v.membre)?.nom ?? "").bold()
                         Text(v.quand, format: .relative(presentation: .named)).foregroundStyle(.secondary)
                     }
                 }
+                if autres.isEmpty { Text("Personne d'autre pour l'instant.").foregroundStyle(.secondary) }
+            }
+            .animation(Anim.douce, value: la.map(\.membre))
+        }
+    }
+
+    /// « Ça bouge à la maison » : le fil de ce que fait la famille, du plus récent au plus ancien.
+    private var filActivite: some View {
+        let lignes = activites.prefix(8)
+        return VStack(alignment: .leading, spacing: 12) {
+            TitreSection("Ça bouge à la maison")
+            if lignes.isEmpty {
+                Text("Ce que chacun range, mange ou prévoit apparaîtra ici.").foregroundStyle(.secondary)
+            } else {
+                Porte {
+                    ForEach(Array(lignes.enumerated()), id: \.element.id) { i, a in
+                        if i > 0 { Divider().padding(.leading, 44) }
+                        Button { ouvrir(URL(string: "willys://\(a.onglet)")!) } label: {
+                            HStack(alignment: .top, spacing: 12) {
+                                Aimant(membre: a.membre, taille: 32)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("**\(a.membre == moi ? "Toi" : Famille.membre(a.membre)?.nom ?? "")** \(a.phrase)")
+                                        .multilineTextAlignment(.leading)
+                                    Text(a.quand, format: .relative(presentation: .named))
+                                        .font(.willys(.caption)).foregroundStyle(.secondary)
+                                }
+                                Spacer(minLength: 0)
+                                Image(systemName: a.icone).foregroundStyle(Theme.accent)
+                            }
+                        }
+                        .buttonStyle(.plain)
+                        .transition(.colle)
+                    }
+                }
+                .animation(Anim.douce, value: lignes.map(\.cle))
             }
         }
     }

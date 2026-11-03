@@ -157,6 +157,7 @@ struct EtapeThermomix: Codable, Hashable {
     var cle: String = ""                 // = le membre : une seule visite gardée par personne
     var membre: String = ""
     var quand: Date = Date.now
+    var ecran: String = "accueil"        // l'onglet ouvert : « Manhattan regarde le calendrier »
     init(membre: String) { self.cle = membre; self.membre = membre }
 }
 
@@ -191,7 +192,7 @@ extension DocumentBrut: AvecCle {}
 enum Schema_ {
     static let modeles: [any PersistentModel.Type] = [
         Evenement.self, Idee.self, Reaction.self, Article.self, Boni.self, Foyer.self,
-        Recette.self, Photo.self, Visite.self, DocumentBrut.self,
+        Recette.self, Photo.self, Visite.self, DocumentBrut.self, Activite.self,
     ]
 }
 

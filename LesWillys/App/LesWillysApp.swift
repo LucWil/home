@@ -73,6 +73,7 @@ enum Onglet: String, CaseIterable, Identifiable {
 struct RacineView: View {
     @Environment(\.modelContext) private var ctx
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.scenePhase) private var phase
     @State private var moi: String? = Base.moi
     @State private var onglet: Onglet = .accueil
     @State private var boniOuvert = false
@@ -95,7 +96,15 @@ struct RacineView: View {
                 .task(id: moi) {
                     noterVisite(moi)
                     await SynchroFamille.partagee.demarrer()
+                    await Alertes.demanderAutorisation()
+                    // Tant que l'app est ouverte, on redit « je suis là » toutes les minutes.
+                    while !Task.isCancelled {
+                        try? await Task.sleep(for: .seconds(60))
+                        if phase == .active { noterVisite(moi) }
+                    }
                 }
+                .onChange(of: onglet) { _, _ in noterVisite(moi) }
+                .overlay(alignment: .top) { BanniereActivite(onglet: $onglet) }
                 .onReceive(NotificationCenter.default.publisher(for: .willysModifie)) { _ in
                     SynchroFamille.partagee.envoyerFile()
                 }
@@ -129,9 +138,6 @@ struct RacineView: View {
     }
 
     private func noterVisite(_ moi: String) {
-        let anciennes = (try? ctx.fetch(FetchDescriptor<Visite>(predicate: #Predicate { $0.membre == moi }))) ?? []
-        anciennes.forEach(ctx.delete)
-        ctx.insert(Visite(membre: moi))
-        ctx.enregistrer()
+        Presence.signaler(onglet: onglet.rawValue, dans: ctx)
     }
 }

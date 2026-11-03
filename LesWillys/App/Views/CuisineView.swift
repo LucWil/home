@@ -7,6 +7,7 @@ struct CuisineView: View {
     let moi: String
     @Environment(\.modelContext) private var ctx
     @Environment(\.colorScheme) private var scheme
+    @Query private var visites: [Visite]
     @Query(sort: \Article.nom) private var stock: [Article]
     @Query(sort: \Recette.cree, order: .reverse) private var recettes: [Recette]
     @State private var partie: Partie = .aManger
@@ -28,6 +29,7 @@ struct CuisineView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
+                IciAussi(onglet: "cuisine", moi: moi, visites: visites)
                 Picker("", selection: $partie) { ForEach(Partie.allCases) { Text($0.rawValue).tag($0) } }
                     .pickerStyle(.segmented)
                 switch partie {
