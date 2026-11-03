@@ -174,7 +174,7 @@ struct AccueilView: View {
                             HStack(alignment: .top, spacing: 12) {
                                 Aimant(membre: a.membre, taille: 32)
                                 VStack(alignment: .leading, spacing: 2) {
-                                    Text("**\(a.membre == moi ? "Toi" : Famille.membre(a.membre)?.nom ?? "")** \(a.phrase)")
+                                    Text("**\(Famille.membre(a.membre)?.nom ?? "")\(a.membre == moi ? " (toi)" : "")** \(a.phrase)")
                                         .multilineTextAlignment(.leading)
                                     Text(a.quand, format: .relative(presentation: .named))
                                         .font(.willys(.caption)).foregroundStyle(.secondary)

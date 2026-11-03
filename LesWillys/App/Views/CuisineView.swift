@@ -166,6 +166,8 @@ struct LigneArticle: View {
                 Text(etat).font(.willys(.footnote)).foregroundStyle(urgent ? Theme.alerte : .secondary).fontWeight(urgent ? .semibold : .regular)
             }
             Spacer()
+            // l'aimant de qui l'a rangé : plein s'il vient d'arriver, estompé sinon
+            Aimant(membre: article.par, taille: 22).opacity(nouveau ? 1 : 0.55)
             Button("Mangé", systemImage: "checkmark") {
                 Retour.succes()
                 avecAnimation { Cuisine.manger(article, par: moi, dans: ctx) }
@@ -185,8 +187,14 @@ struct LigneArticle: View {
             .accessibilityLabel("Autres actions")
         }
         .padding(.vertical, 2)
+        .padding(.horizontal, nouveau ? 6 : 0)
+        .background(nouveau ? Theme.accent.opacity(0.14) : .clear, in: RoundedRectangle(cornerRadius: 10))
+        .animation(Anim.douce, value: nouveau)
         .transition(.sort)
     }
+
+    /// Rangé par quelqu'un d'autre il y a moins de 30 minutes : surligné, pour qu'on le remarque.
+    private var nouveau: Bool { article.par != moi && Date.now.timeIntervalSince(article.cree) < 30 * 60 }
 
     private var urgent: Bool { (article.joursRestants ?? 99) <= (article.rangement == "armoire" ? 14 : 1) }
 
