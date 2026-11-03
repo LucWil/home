@@ -50,7 +50,7 @@ struct FormulaireMot: View {
             ToolbarItem(placement: .confirmationAction) {
                 Button("Laisser le mot") {
                     ctx.insert(Idee(genre: "mot", titre: texte.trimmingCharacters(in: .whitespacesAndNewlines), par: moi))
-                    try? ctx.save(); Base.rafraichirWidgets(); fermer()
+                    ctx.enregistrer(); Base.rafraichirWidgets(); fermer()
                 }.disabled(texte.trimmingCharacters(in: .whitespaces).isEmpty)
             }
         }
@@ -92,7 +92,7 @@ struct FormulaireEvenement: View {
                     let qui = type == .garde ? enfant + personnes.filter { !enfant.contains($0) } : personnes
                     ctx.insert(Evenement(type: type.rawValue, titre: titre, debut: Jour.chaine(debut), fin: Jour.chaine(max(fin, debut)),
                                          personnes: qui, gardeChez: type == .garde ? gardeChez : nil, par: moi))
-                    try? ctx.save(); Base.rafraichirWidgets(); fermer()
+                    ctx.enregistrer(); Base.rafraichirWidgets(); fermer()
                 }.disabled(titre.isEmpty)
             }
         }
@@ -124,7 +124,7 @@ struct FormulaireIdee: View {
                     let i = Idee(genre: genre, titre: titre, par: moi)
                     i.quand = quand; i.prix = prix; i.note = note
                     i.lien = lien.hasPrefix("https://") ? lien : ""; i.photo = photo.hasPrefix("https://") ? photo : ""
-                    ctx.insert(i); try? ctx.save(); Base.rafraichirWidgets(); fermer()
+                    ctx.insert(i); ctx.enregistrer(); Base.rafraichirWidgets(); fermer()
                 }.disabled(titre.isEmpty)
             }
         }
@@ -176,7 +176,7 @@ struct FormulaireArticle: View {
                     if ou == .frais, let j = Int(bonJours) { a.bonJours = j }
                     if ou == .armoire, avecPeremption { a.peremption = Jour.chaine(peremption) }
                     if ou == .surgelateur { a.tiroir = Self.tiroirs[categorie] ?? 6 }
-                    ctx.insert(a); try? ctx.save(); Base.rafraichirWidgets(); fermer()
+                    ctx.insert(a); ctx.enregistrer(); Base.rafraichirWidgets(); fermer()
                 }.disabled(nom.isEmpty)
             }
         }
@@ -216,7 +216,7 @@ struct FormulairePhoto: View {
             ToolbarItem(placement: .confirmationAction) {
                 Button("Au mur") {
                     let p = Photo(legende: legende, qui: qui, par: moi); p.image = image
-                    ctx.insert(p); try? ctx.save(); Base.rafraichirWidgets(); fermer()
+                    ctx.insert(p); ctx.enregistrer(); Base.rafraichirWidgets(); fermer()
                 }.disabled(image == nil)
             }
         }

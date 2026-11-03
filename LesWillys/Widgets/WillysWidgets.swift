@@ -64,7 +64,7 @@ struct Fournisseur: TimelineProvider {
     }
 
     @MainActor private func lire() -> Instantane {
-        let ctx = ModelContext(Base.conteneur(synchro: false))
+        let ctx = ModelContext(Base.conteneur())
         let moi = Base.moi
         let foyer = Famille.foyer(de: moi) ?? ""
         var i = Instantane(date: .now, moi: moi)

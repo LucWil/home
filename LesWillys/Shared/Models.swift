@@ -154,9 +154,10 @@ struct EtapeThermomix: Codable, Hashable {
 
 /// Visite : qui est passé dans l'app, et quand.
 @Model final class Visite {
+    var cle: String = ""                 // = le membre : une seule visite gardée par personne
     var membre: String = ""
     var quand: Date = Date.now
-    init(membre: String) { self.membre = membre }
+    init(membre: String) { self.cle = membre; self.membre = membre }
 }
 
 /// Toutes les autres collections de l'app web (jardin, récoltes, restos, entretien, papiers…)
@@ -184,6 +185,8 @@ extension Boni: AvecCle {}
 extension Foyer: AvecCle {}
 extension Recette: AvecCle {}
 extension Photo: AvecCle {}
+extension Visite: AvecCle {}
+extension DocumentBrut: AvecCle {}
 
 enum Schema_ {
     static let modeles: [any PersistentModel.Type] = [

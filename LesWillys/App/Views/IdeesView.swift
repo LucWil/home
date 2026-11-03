@@ -97,7 +97,7 @@ struct CarteIdee: View {
         .shadow(color: .black.opacity(0.08), radius: 10, y: 6)
         .contextMenu {
             ShareLink(item: "\(idee.titre)\(idee.quand.isEmpty ? "" : " — \(idee.quand)") \(idee.lien)")
-            if idee.par == moi { Button("Retirer", role: .destructive) { ctx.delete(idee); try? ctx.save() } }
+            if idee.par == moi { Button("Retirer", role: .destructive) { ctx.delete(idee); ctx.enregistrer() } }
         }
     }
 }

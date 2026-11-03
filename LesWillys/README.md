@@ -37,6 +37,25 @@ natives. Tout le reste (jardin, récoltes, restos, entretien, papiers, IBAN…) 
 et pourra recevoir son écran plus tard. Reprendre deux fois le même fichier ne crée pas de doublons.
 Les sauvegardes ne doivent jamais être ajoutées à ce dépôt (le `.gitignore` les exclut).
 
+## Le partage entre les huit membres (iCloud, sans service tiers)
+
+Toute la famille a un iPhone : les données sont partagées par **iCloud**, gratuitement, sans
+serveur ni abonnement. Elles vivent dans une « maison commune » (une zone iCloud nommée *Willys*)
+qui appartient à Chouchou et qu'il partage avec les sept autres.
+
+1. **Chouchou** ouvre l'app, choisit son aimant, importe la sauvegarde de l'app web
+   (*Chez nous › Reprendre une sauvegarde*), puis touche **Chez nous › Inviter la famille**.
+   La fenêtre d'Apple permet d'envoyer le lien par Messages, WhatsApp ou e-mail.
+2. **Chaque membre** installe l'app, choisit son aimant et touche le lien reçu. C'est tout :
+   l'app se remplit. Son iPad voit aussi la maison commune, sans nouvelle invitation.
+3. Ensuite, tout changement part tout seul vers les autres (quelques secondes en général).
+   Un « Mangé » touché dans un widget part à la prochaine ouverture de l'app.
+
+En coulisses : chaque appareil garde une copie locale (SwiftData) lue par l'app et les widgets ;
+`App/Synchro/SynchroFamille.swift` l'échange avec iCloud grâce à CKSyncEngine. Si deux personnes
+changent la même chose au même moment, la dernière modification gagne. Les IBAN ne quittent jamais
+l'appareil de celui qui les a importés.
+
 ## Compiler sur le Mac
 
 ```sh
@@ -50,9 +69,12 @@ Puis dans Xcode :
 
 1. *Signing & Capabilities* : choisir ton équipe Apple Developer pour les deux cibles
    (`LesWillys` et `WillysWidgets`), ou remplir `DEVELOPMENT_TEAM` dans `project.yml`.
-2. Vérifier que l'App Group `group.be.willys.app` et le conteneur iCloud `iCloud.be.willys.app`
+2. Dans le *CloudKit Console*, rien à créer à la main : les types d'enregistrements se créent au
+   premier envoi en développement. Avant de distribuer l'app à la famille, cliquer sur
+   **Deploy Schema Changes** pour passer le schéma en production.
+3. Vérifier que l'App Group `group.be.willys.app` et le conteneur iCloud `iCloud.be.willys.app`
    sont cochés (Xcode les crée sur le compte développeur au premier lancement).
-3. Lancer sur ton iPhone. iOS 17 minimum (SwiftData et widgets interactifs).
+4. Lancer sur ton iPhone. iOS 17 minimum (SwiftData et widgets interactifs).
 
 > Ce code a été écrit sans Mac à portée de main : il n'a pas encore été compilé.
 > Le premier `⌘B` fera probablement remonter quelques petites erreurs : demande à
@@ -65,23 +87,19 @@ project.yml              projet XcodeGen (app + extension widgets)
 Shared/                  partagé entre l'app et les widgets
   Family.swift           les 8 membres, les 4 foyers, types, saisons, vacances scolaires
   Models.swift           modèles SwiftData (compatibles iCloud) + outils de dates
-  Store.swift            base partagée (App Group), règle du boni, bouton « Mangé » (AppIntent)
+  Store.swift            base locale (App Group), règle du boni, bouton « Mangé » (AppIntent)
+  Enregistrements.swift  correspondance objets ↔ enregistrements iCloud, file d'envoi
   Theme.swift            aimants, post-it, cartes « porte du frigo »
 App/                     l'app
   LesWillysApp.swift     onglets et liens profonds
   Import/                reprise de la sauvegarde JSON de l'app web
+  Synchro/               la maison commune iCloud (CKSyncEngine, invitation, acceptation)
   Views/                 un fichier par onglet + formulaires
 Widgets/                 les cinq widgets
 ```
 
 ## Ce qui reste à faire (suite du plan)
 
-- **Partage familial (semaine 4 du plan).** Aujourd'hui, la synchronisation iCloud passe par la base
-  *privée* : les données suivent une même personne sur son iPhone et son iPad, mais ne sont pas
-  encore partagées entre les huit membres. Pour partager, il faut une zone iCloud partagée
-  (`CKShare`) : SwiftData ne le gère pas encore, il faudra passer la couche de données sur
-  `NSPersistentCloudKitContainer` (Core Data) ou sur un petit serveur (Supabase, par exemple, si un
-  membre est sous Android). Les modèles sont déjà prêts pour ça.
 - **Lecture des tickets** par l'appareil photo (Vision, sur l'appareil).
 - **Notifications** (« les yaourts sont à manger aujourd'hui », nouveau petit mot).
 - **Menu « avec ce qu'on a »** via l'API de Claude, si on veut garder cette fonction.

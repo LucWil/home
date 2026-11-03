@@ -41,7 +41,7 @@ struct ImportSauvegarde {
                 bilan.parCollection[nom, default: 0] += 1
             }
         }
-        try ctx.save()
+        ctx.enregistrer()   // tout ce qui est importé part aussi vers la maison commune
         for b in (try? ctx.fetch(FetchDescriptor<Boni>())) ?? [] {
             bilan.boniParFoyer[b.foyer, default: 0] += b.valeur
         }

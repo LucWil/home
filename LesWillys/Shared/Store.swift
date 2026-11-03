@@ -17,23 +17,15 @@ enum Base {
     }
     static var monFoyer: String? { Famille.foyer(de: moi) }
 
-    static func conteneur(synchro: Bool) -> ModelContainer {
+    /// La base SwiftData est locale à l'appareil. La synchronisation entre les huit membres
+    /// passe par `SynchroFamille` (CloudKit, zone partagée « Willys »), pas par SwiftData.
+    static func conteneur() -> ModelContainer {
         let schema = Schema(Schema_.modeles)
-        let config = ModelConfiguration(
-            "LesWillys",
-            schema: schema,
-            groupContainer: .identifier(groupe),
-            cloudKitDatabase: synchro ? .private(iCloud) : .none
-        )
-        do { return try ModelContainer(for: schema, configurations: [config]) }
-        catch {
-            // Si iCloud n'est pas disponible (simulateur sans compte, par ex.), on reste en local.
-            let local = ModelConfiguration("LesWillys", schema: schema, groupContainer: .identifier(groupe), cloudKitDatabase: .none)
-            return try! ModelContainer(for: schema, configurations: [local])
-        }
+        let config = ModelConfiguration("LesWillys", schema: schema, groupContainer: .identifier(groupe), cloudKitDatabase: .none)
+        return try! ModelContainer(for: schema, configurations: [config])
     }
 
-    @MainActor static let app = conteneur(synchro: true)
+    @MainActor static let app = conteneur()
 
     /// Après chaque changement, on prévient les widgets.
     static func rafraichirWidgets() { WidgetCenter.shared.reloadAllTimelines() }
@@ -46,7 +38,7 @@ enum Cuisine {
             ctx.insert(Boni(foyer: article.foyer, nom: article.nom, valeur: article.prix, par: membre))
         }
         ctx.delete(article)
-        try? ctx.save()
+        ctx.enregistrer()
     }
 
     /// Les articles du foyer qui arrivent à date, le plus urgent d'abord.
@@ -76,10 +68,10 @@ struct MangerIntent: AppIntent {
     init(cle: String) { self.cle = cle }
 
     @MainActor func perform() async throws -> some IntentResult {
-        let ctx = ModelContext(Base.conteneur(synchro: false))
+        let ctx = ModelContext(Base.conteneur())
         let c = cle
         if let a = try ctx.fetch(FetchDescriptor<Article>(predicate: #Predicate { $0.cle == c })).first {
-            Cuisine.manger(a, par: Base.moi ?? "", dans: ctx)
+            Cuisine.manger(a, par: Base.moi ?? "", dans: ctx)   // passe par la file d'envoi
         }
         Base.rafraichirWidgets()
         return .result()

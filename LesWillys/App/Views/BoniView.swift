@@ -80,7 +80,7 @@ struct FormulaireObjectif: View {
                     let f = fiche ?? { let n = Foyer(cle: foyer, nom: Famille.nomFoyer(foyer)); ctx.insert(n); return n }()
                     f.objectifLibelle = libelle
                     f.objectifMontant = Double(montant.replacingOccurrences(of: ",", with: ".")) ?? 0
-                    try? ctx.save(); Base.rafraichirWidgets(); fermer()
+                    ctx.enregistrer(); Base.rafraichirWidgets(); fermer()
                 }
             }
         }

@@ -30,6 +30,7 @@ targets:
           [UIInterfaceOrientationPortrait, UIInterfaceOrientationPortraitUpsideDown,
            UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
         UIBackgroundModes: [remote-notification]
+        CKSharingSupported: true
         NSCameraUsageDescription: "Pour photographier les tickets de courses et le mur des petites."
         NSPhotoLibraryUsageDescription: "Pour ajouter des photos au mur des petites."
         CFBundleURLTypes:

@@ -158,7 +158,7 @@ struct AccueilView: View {
                                sousTitre: "\(Famille.membre(m.par)?.nom ?? "") · \(m.cree.formatted(.relative(presentation: .named)))",
                                rose: i % 2 == 1)
                         .contextMenu {
-                            if m.par == moi { Button("Retirer", role: .destructive) { ctx.delete(m); try? ctx.save(); Base.rafraichirWidgets() } }
+                            if m.par == moi { Button("Retirer", role: .destructive) { ctx.delete(m); ctx.enregistrer(); Base.rafraichirWidgets() } }
                         }
                     }
                 }
@@ -228,7 +228,7 @@ enum Reactions {
         let identique = mienne?.reaction == reaction
         if let mienne { ctx.delete(mienne) }
         if !identique { ctx.insert(Reaction(element: element, membre: membre, reaction: reaction)) }
-        try? ctx.save()
+        ctx.enregistrer()
     }
 }
 
@@ -261,7 +261,7 @@ struct LigneEvenement: View {
         .padding(.vertical, 6)
         .contextMenu {
             if e.par == moi || moi == "chouchou" || moi == "loulou" {
-                Button("Retirer", role: .destructive) { ctx.delete(e); try? ctx.save(); Base.rafraichirWidgets() }
+                Button("Retirer", role: .destructive) { ctx.delete(e); ctx.enregistrer(); Base.rafraichirWidgets() }
             }
         }
     }

@@ -1,13 +1,45 @@
 import SwiftUI
 import SwiftData
+import CloudKit
+import UIKit
 
 @main
 struct LesWillysApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var delegue
+    @Environment(\.scenePhase) private var phase
+
     var body: some Scene {
         WindowGroup {
             RacineView()
+                .environmentObject(SynchroFamille.partagee)
         }
         .modelContainer(Base.app)
+        .onChange(of: phase) { _, p in
+            // En revenant dans l'app : on envoie ce que les widgets ont noté et on récupère les nouveautés.
+            if p == .active { Task { await SynchroFamille.partagee.synchroniserMaintenant() } }
+        }
+    }
+}
+
+/// Nécessaire pour recevoir l'invitation iCloud (le lien envoyé par Chouchou) et les notifications
+/// silencieuses de CloudKit quand quelqu'un modifie quelque chose.
+final class AppDelegate: NSObject, UIApplicationDelegate {
+    func application(_ application: UIApplication, didFinishLaunchingWithOptions options: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
+        application.registerForRemoteNotifications()
+        return true
+    }
+
+    func application(_ application: UIApplication, configurationForConnecting scene: UISceneSession,
+                     options: UIScene.ConnectionOptions) -> UISceneConfiguration {
+        let config = UISceneConfiguration(name: nil, sessionRole: scene.role)
+        config.delegateClass = SceneDelegate.self
+        return config
+    }
+}
+
+final class SceneDelegate: NSObject, UIWindowSceneDelegate {
+    func windowScene(_ windowScene: UIWindowScene, userDidAcceptCloudKitShareWith invitation: CKShare.Metadata) {
+        Task { @MainActor in await SynchroFamille.partagee.accepter(invitation) }
     }
 }
 
@@ -56,7 +88,13 @@ struct RacineView: View {
                 }
                 .tint(Theme.accent)
                 .sheet(isPresented: $boniOuvert) { NavigationStack { BoniView(moi: moi) } }
-                .task { noterVisite(moi) }
+                .task(id: moi) {
+                    noterVisite(moi)
+                    await SynchroFamille.partagee.demarrer()
+                }
+                .onReceive(NotificationCenter.default.publisher(for: .willysModifie)) { _ in
+                    SynchroFamille.partagee.envoyerFile()
+                }
             } else {
                 ChoixMembreView { choisi in
                     Base.moi = choisi
@@ -88,6 +126,6 @@ struct RacineView: View {
         let anciennes = (try? ctx.fetch(FetchDescriptor<Visite>(predicate: #Predicate { $0.membre == moi }))) ?? []
         anciennes.forEach(ctx.delete)
         ctx.insert(Visite(membre: moi))
-        try? ctx.save()
+        ctx.enregistrer()
     }
 }

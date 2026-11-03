@@ -8,6 +8,7 @@ struct ChezNousView: View {
     let moi: String
     let changerDeMembre: () -> Void
     @Environment(\.modelContext) private var ctx
+    @EnvironmentObject private var synchro: SynchroFamille
     @Query(sort: \DocumentBrut.cree, order: .reverse) private var docs: [DocumentBrut]
     @State private var importer = false
     @State private var bilan: String?
@@ -40,6 +41,8 @@ struct ChezNousView: View {
                 }
             }
 
+            partage
+
             Section {
                 Button { importer = true } label: { Label("Reprendre une sauvegarde de l'app web", systemImage: "square.and.arrow.down") }
                 if let bilan { Text(bilan).font(.footnote).foregroundStyle(.secondary) }
@@ -63,6 +66,40 @@ struct ChezNousView: View {
             } catch {
                 bilan = "Import impossible : \(error.localizedDescription)"
             }
+        }
+    }
+}
+
+extension ChezNousView {
+    /// La maison commune iCloud : Chouchou invite, les autres acceptent le lien une seule fois.
+    @ViewBuilder var partage: some View {
+        Section {
+            switch synchro.etat {
+            case .pasDeCompteICloud:
+                Label("Connecte-toi à iCloud dans les Réglages de l'iPhone pour partager avec la famille.",
+                      systemImage: "icloud.slash")
+            case .enAttenteInvitation:
+                Label("Pas encore dans la maison commune. Ouvre le lien d'invitation que Chouchou t'a envoyé (Messages ou WhatsApp).",
+                      systemImage: "envelope.open")
+            case .pret:
+                Label(synchro.derniereSynchro.map { "Partagé avec la famille · à jour \($0.formatted(.relative(presentation: .named)))" }
+                      ?? "Partagé avec la famille", systemImage: "checkmark.icloud")
+                    .foregroundStyle(Theme.ok)
+            case .erreur(let message):
+                Label(message, systemImage: "exclamationmark.icloud").foregroundStyle(Theme.alerte)
+            }
+            if synchro.estProprietaire {
+                Button { Task { await synchro.inviterLaFamille() } } label: {
+                    Label("Inviter la famille", systemImage: "person.badge.plus")
+                }
+            }
+            Button { Task { await synchro.synchroniserMaintenant() } } label: {
+                Label("Synchroniser maintenant", systemImage: "arrow.triangle.2.circlepath")
+            }
+        } header: { Text("Partage familial") } footer: {
+            Text(synchro.estProprietaire
+                 ? "La maison commune est dans ton iCloud. « Inviter la famille » envoie un lien à chacun ; ils n'ont qu'à le toucher une fois. Les IBAN restent sur cet appareil."
+                 : "Toutes les données sont dans l'iCloud de Chouchou et partagées avec les huit membres. Accepter l'invitation une fois suffit pour l'iPhone et l'iPad.")
         }
     }
 }

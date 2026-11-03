@@ -168,7 +168,7 @@ struct LigneArticle: View {
                 .buttonStyle(.borderedProminent).tint(Theme.ok).font(.footnote.bold())
             Menu {
                 Button("Jeté", role: .destructive) { jeter() }
-                Button("Retirer sans compter", role: .destructive) { ctx.delete(article); try? ctx.save(); Base.rafraichirWidgets() }
+                Button("Retirer sans compter", role: .destructive) { ctx.delete(article); ctx.enregistrer(); Base.rafraichirWidgets() }
             } label: { Image(systemName: "ellipsis.circle") }
         }
         .padding(.vertical, 4)
@@ -196,7 +196,7 @@ struct LigneArticle: View {
                                 "at": Date.now.timeIntervalSince1970 * 1000, "date": Jour.aujourdhui]
         let json = (try? JSONSerialization.data(withJSONObject: d)) ?? Data()
         ctx.insert(DocumentBrut(collection: "waste", cle: UUID().uuidString, json: json, foyer: article.foyer))
-        ctx.delete(article); try? ctx.save(); Base.rafraichirWidgets()
+        ctx.delete(article); ctx.enregistrer(); Base.rafraichirWidgets()
     }
 }
 
