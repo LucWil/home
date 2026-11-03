@@ -12,6 +12,7 @@ struct ChezNousView: View {
     @Query(sort: \DocumentBrut.cree, order: .reverse) private var docs: [DocumentBrut]
     @State private var importer = false
     @State private var bilan: String?
+    @State private var confirmerChangement = false
 
     private var foyer: String { Famille.foyer(de: moi) ?? "" }
     private func de(_ c: String) -> [[String: Any]] { docs.filter { $0.collection == c && $0.foyer == foyer }.map(\.valeurs) }
@@ -33,11 +34,11 @@ struct ChezNousView: View {
                         Text(r.s("name")).bold()
                         Spacer()
                         Text("\(Int(r.nombre("g"))) g").monospacedDigit()
-                        Text(r.s("date")).font(.caption).foregroundStyle(.secondary)
+                        Text(r.s("date")).font(.willys(.caption)).foregroundStyle(.secondary)
                     }
                 }
                 ForEach(Array(de("garden").prefix(15).enumerated()), id: \.offset) { _, g in
-                    HStack { Image(systemName: "leaf"); Text(g.s("name", g.s("nom"))); Spacer(); Text(g.s("date")).font(.caption).foregroundStyle(.secondary) }
+                    HStack { Image(systemName: "leaf"); Text(g.s("name", g.s("nom"))); Spacer(); Text(g.s("date")).font(.willys(.caption)).foregroundStyle(.secondary) }
                 }
             }
 
@@ -45,14 +46,19 @@ struct ChezNousView: View {
 
             Section {
                 Button { importer = true } label: { Label("Reprendre une sauvegarde de l'app web", systemImage: "square.and.arrow.down") }
-                if let bilan { Text(bilan).font(.footnote).foregroundStyle(.secondary) }
+                if let bilan { Text(bilan).font(.willys(.footnote)).foregroundStyle(.secondary) }
             } header: { Text("Les données") } footer: {
                 Text("Dans l'app web : Calendrier › La maison › Sauvegarde › Télécharger, ou le bouton « Données » du Coffre des Willys. Reprendre deux fois le même fichier ne crée pas de doublons.")
             }
 
             Section("Cet appareil") {
                 HStack { Aimant(membre: moi, taille: 30); Text("Tu es \(Famille.membre(moi)?.nom ?? "") · foyer \(Famille.nomFoyer(foyer))") }
-                Button("Changer d'aimant", role: .destructive) { changerDeMembre() }
+                Button("Changer d'aimant", role: .destructive) { confirmerChangement = true }
+                    .confirmationDialog("Changer d'aimant sur cet appareil ?", isPresented: $confirmerChangement, titleVisibility: .visible) {
+                        Button("Changer d'aimant", role: .destructive) { changerDeMembre() }
+                    } message: {
+                        Text("Les données restent ; l'app te redemandera qui tu es.")
+                    }
             }
         }
         .navigationTitle("Chez nous")
@@ -82,9 +88,13 @@ extension ChezNousView {
                 Label("Pas encore dans la maison commune. Ouvre le lien d'invitation que Chouchou t'a envoyé (Messages ou WhatsApp).",
                       systemImage: "envelope.open")
             case .pret:
-                Label(synchro.derniereSynchro.map { "Partagé avec la famille · à jour \($0.formatted(.relative(presentation: .named)))" }
-                      ?? "Partagé avec la famille", systemImage: "checkmark.icloud")
-                    .foregroundStyle(Theme.ok)
+                Label {
+                    Text(synchro.derniereSynchro.map { "Partagé avec la famille · à jour \($0.formatted(.relative(presentation: .named)))" }
+                         ?? "Partagé avec la famille")
+                } icon: {
+                    Image(systemName: "checkmark.icloud").symbolEffect(.bounce, value: synchro.derniereSynchro)
+                }
+                .foregroundStyle(Theme.ok)
             case .erreur(let message):
                 Label(message, systemImage: "exclamationmark.icloud").foregroundStyle(Theme.alerte)
             }
@@ -109,8 +119,8 @@ struct Stat: View {
     let libelle: String
     var body: some View {
         VStack(alignment: .leading) {
-            Text(valeur).font(.system(size: 20, weight: .heavy, design: .rounded)).monospacedDigit()
-            Text(libelle).font(.caption).foregroundStyle(.secondary)
+            Text(valeur).font(Theme.titre(20)).monospacedDigit()
+            Text(libelle).font(.willys(.caption)).foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }

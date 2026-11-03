@@ -65,14 +65,14 @@ struct AccueilView: View {
                     .rotationEffect(.degrees(-3)).shadow(radius: 6, y: 6)
             }
             VStack(alignment: .leading, spacing: 8) {
-                Text("CHEZ LES WILLYS").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                Text("CHEZ LES WILLYS").font(.willys(.caption, poids: .semibold)).foregroundStyle(.secondary)
                 Text(["Bienvenue à la maison", "La famille au complet", "Toute la famille, une seule maison"][jour % 3])
                     .font(Theme.titre(26))
                 HStack(spacing: 4) { ForEach(Famille.membres) { Aimant(membre: $0.id, taille: 24) } }
                 if let prochain {
-                    Text("Prochain rendez-vous : **\(Jour.joli(prochain.debut))** · \(prochain.titre)").font(.subheadline)
+                    Text("Prochain rendez-vous : **\(Jour.joli(prochain.debut))** · \(prochain.titre)").font(.willys(.subheadline))
                 } else {
-                    Text("Pas de rendez-vous prévu : à vous de lancer la prochaine idée !").font(.subheadline)
+                    Text("Pas de rendez-vous prévu : à vous de lancer la prochaine idée !").font(.willys(.subheadline))
                 }
                 HStack {
                     Button("Laisser un mot") { feuille = .mot }.buttonStyle(.borderedProminent)
@@ -96,7 +96,9 @@ struct AccueilView: View {
             HStack {
                 Text("Cette semaine").font(Theme.titre(22))
                 Spacer()
-                Button { feuille = .evenement } label: { Image(systemName: "plus") }.buttonStyle(.bordered)
+                Button { feuille = .evenement } label: { Image(systemName: "plus") }
+                    .buttonStyle(.bordered).buttonBorderShape(.circle)
+                    .accessibilityLabel("Ajouter une date")
             }
             if liste.isEmpty {
                 Text("Rien de prévu ces 7 prochains jours.").foregroundStyle(.secondary)
@@ -113,7 +115,7 @@ struct AccueilView: View {
                 .map { ($0.genre == "weekend" ? "Week-end" : "Voyage", $0.titre, $0.par) }
              + recettes.filter { $0.cree > dernierPassage && $0.par != moi }.map { ("Recette", $0.titre, $0.par) })
         return Porte(teinte: Theme.accent) {
-            Text("Nouveau depuis ta dernière visite").font(.headline)
+            Text("Nouveau depuis ta dernière visite").font(.willys(.headline))
             if frais.isEmpty {
                 Text("Tu es à jour, rien de neuf à la maison.").foregroundStyle(.secondary)
             } else {
@@ -126,7 +128,7 @@ struct AccueilView: View {
 
     private var passages: some View {
         Porte {
-            Text("Qui est passé").font(.headline)
+            Text("Qui est passé").font(.willys(.headline))
             let autres = visites.filter { $0.membre != moi }.prefix(6)
             if autres.isEmpty {
                 Text("Personne d'autre pour l'instant.").foregroundStyle(.secondary)
@@ -157,12 +159,21 @@ struct AccueilView: View {
                         PostIt(texte: m.titre, auteur: m.par,
                                sousTitre: "\(Famille.membre(m.par)?.nom ?? "") · \(m.cree.formatted(.relative(presentation: .named)))",
                                rose: i % 2 == 1)
+                        .transition(.colle)
                         .contextMenu {
-                            if m.par == moi { Button("Retirer", role: .destructive) { ctx.delete(m); ctx.enregistrer(); Base.rafraichirWidgets() } }
+                            ShareLink(item: m.titre)
+                            if m.par == moi {
+                                Button("Retirer", systemImage: "trash", role: .destructive) {
+                                    Retour.avertissement()
+                                    avecAnimation { ctx.delete(m); ctx.enregistrer() }
+                                    Base.rafraichirWidgets()
+                                }
+                            }
                         }
                     }
                 }
                 .padding(.top, 12)
+                .animation(Anim.douce, value: mots.map(\.cle))
             }
         }
     }
@@ -203,11 +214,10 @@ struct Polaroid: View {
                 ForEach([("coeur", "❤️"), ("rire", "😄"), ("waouh", "🤩")], id: \.0) { k, e in
                     let n = reactions.filter { $0.reaction == k }.count
                     let mienne = reactions.first { $0.membre == moi }?.reaction == k
-                    Button("\(e)\(n > 0 ? " \(n)" : "")") { reagir(k) }
-                        .font(.footnote).padding(.horizontal, 8).padding(.vertical, 3)
-                        .background(mienne ? Color.primary.opacity(0.85) : .clear, in: Capsule())
-                        .foregroundStyle(mienne ? Color.white : Theme.encrePostit)
-                        .overlay(Capsule().stroke(.gray.opacity(0.3)))
+                    Button("\(e)\(n > 0 ? " \(n)" : "")") { Retour.selection(); avecAnimation { reagir(k) } }
+                        .buttonStyle(StylePastille(active: mienne))
+                        .environment(\.colorScheme, .light)     // le polaroïd reste blanc, même en mode sombre
+                        .accessibilityLabel("\(k == "coeur" ? "J'aime" : k == "rire" ? "Ça me fait rire" : "Waouh"), \(n)")
                 }
             }
             .padding(.bottom, 10)
@@ -243,17 +253,17 @@ struct LigneEvenement: View {
             VStack(spacing: 0) {
                 Text(Jour.date(e.debut).formatted(.dateTime.day())).font(Theme.titre(22))
                 Text(Jour.date(e.debut).formatted(.dateTime.month(.abbreviated).locale(Locale(identifier: "fr_BE"))))
-                    .font(.caption2).textCase(.uppercase).foregroundStyle(.secondary)
+                    .font(.willys(.caption2)).textCase(.uppercase).foregroundStyle(.secondary)
             }
             .frame(width: 52).padding(.vertical, 6).background(.secondary.opacity(0.12), in: RoundedRectangle(cornerRadius: 12))
             VStack(alignment: .leading, spacing: 4) {
                 HStack { Etiquette(texte: e.typeEvenement.libelle, couleur: e.typeEvenement.couleur); Text(e.titre).bold() }
                 Text(plage + (e.gardeChez.map { " · garde chez \(Famille.membre($0)?.nom ?? "")" } ?? ""))
-                    .font(.subheadline).foregroundStyle(.secondary)
+                    .font(.willys(.subheadline)).foregroundStyle(.secondary)
                 HStack {
                     PileAimants(membres: e.personnes)
                     ShareLink(item: "\(e.typeEvenement.libelle) : \(e.titre) — \(plage)") {
-                        Label("Partager", systemImage: "square.and.arrow.up").font(.caption.bold())
+                        Label("Partager", systemImage: "square.and.arrow.up").font(.willys(.caption, poids: .bold))
                     }
                 }
             }
@@ -261,7 +271,9 @@ struct LigneEvenement: View {
         .padding(.vertical, 6)
         .contextMenu {
             if e.par == moi || moi == "chouchou" || moi == "loulou" {
-                Button("Retirer", role: .destructive) { ctx.delete(e); ctx.enregistrer(); Base.rafraichirWidgets() }
+                Button("Retirer", systemImage: "trash", role: .destructive) {
+                    Retour.avertissement(); avecAnimation { ctx.delete(e); ctx.enregistrer() }; Base.rafraichirWidgets()
+                }
             }
         }
     }

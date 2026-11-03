@@ -45,8 +45,8 @@ struct CuisineView: View {
         .background(Theme.emaille(scheme))
         .navigationTitle("Cuisine · \(Famille.nomFoyer(foyer))")
         .toolbar {
-            ToolbarItem { Button { boni = true } label: { Label("Boni", systemImage: "eurosign.circle") } }
-            ToolbarItem { Button { ajout = partie == .surgelateur ? .surgelateur : partie == .armoire ? .armoire : .frais } label: { Image(systemName: "plus") } }
+            ToolbarItem { Button { boni = true } label: { Label("Budget et boni", systemImage: "eurosign.circle") } }
+            ToolbarItem { Button { ajout = partie == .surgelateur ? .surgelateur : partie == .armoire ? .armoire : .frais } label: { Label("Ranger quelque chose", systemImage: "plus") } }
         }
         .sheet(item: $ajout) { r in NavigationStack { FormulaireArticle(moi: moi, foyer: foyer, rangement: r) } }
         .sheet(isPresented: $boni) { NavigationStack { BoniView(moi: moi) } }
@@ -62,7 +62,7 @@ struct CuisineView: View {
         }.sorted { $0.1 < $1.1 }.map { $0.0 }
         return Porte(teinte: Theme.accent) {
             Text("À manger cette semaine").font(Theme.titre(22))
-            Text("Chaque produit mangé au lieu d'être racheté grossit le boni du foyer.").font(.subheadline).foregroundStyle(.secondary)
+            Text("Chaque produit mangé au lieu d'être racheté grossit le boni du foyer.").font(.willys(.subheadline)).foregroundStyle(.secondary)
             if urgents.isEmpty { Text("Rien qui presse. Bravo !").foregroundStyle(.secondary) }
             ForEach(urgents) { LigneArticle(article: $0, moi: moi) }
         }
@@ -91,7 +91,7 @@ struct CuisineView: View {
                     HStack {
                         Text("Tiroir \(t)").font(Theme.titre(16))
                         Spacer()
-                        Text("\(contenu.count) article\(contenu.count > 1 ? "s" : "")").font(.footnote).foregroundStyle(.secondary)
+                        Text("\(contenu.count) article\(contenu.count > 1 ? "s" : "")").font(.willys(.footnote)).foregroundStyle(.secondary)
                     }
                 }
                 .padding(14)
@@ -118,14 +118,14 @@ struct CuisineView: View {
                             .frame(height: 140).clipShape(RoundedRectangle(cornerRadius: 12))
                     }
                     HStack { Aimant(membre: r.par, taille: 24); Text(r.titre).font(Theme.titre(18)) }
-                    if !r.intro.isEmpty { Text(r.intro).font(.subheadline).foregroundStyle(.secondary) }
+                    if !r.intro.isEmpty { Text(r.intro).font(.willys(.subheadline)).foregroundStyle(.secondary) }
                     HStack {
                         Text(String(repeating: "€", count: max(1, r.cout))).bold().foregroundStyle(Theme.accent)
-                        Text("· \(r.personnes) pers.").font(.footnote).foregroundStyle(.secondary)
+                        Text("· \(r.personnes) pers.").font(.willys(.footnote)).foregroundStyle(.secondary)
                         if r.envie { Etiquette(texte: "Envie", couleur: Theme.accent) }
                     }
                     if !r.ingredients.isEmpty {
-                        DisclosureGroup("Ingrédients") { ForEach(r.ingredients, id: \.self) { Text("• \($0)").font(.subheadline) } }
+                        DisclosureGroup("Ingrédients") { ForEach(r.ingredients, id: \.self) { Text("• \($0)").font(.willys(.subheadline)) } }
                     }
                     if !r.etapes.isEmpty {
                         Button("Mode Thermomix") { thermomix = r }.buttonStyle(.borderedProminent).tint(Color(hex: 0x2BA67F))
@@ -137,10 +137,10 @@ struct CuisineView: View {
 
     private var saison: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("De saison en \(Date.now.formatted(.dateTime.month(.wide).locale(Locale(identifier: "fr_BE"))))").font(.headline)
+            Text("De saison en \(Date.now.formatted(.dateTime.month(.wide).locale(Locale(identifier: "fr_BE"))))").font(.willys(.headline))
             FlowLayout(spacing: 6) {
                 ForEach(Saison.duMois, id: \.self) {
-                    Text($0).font(.subheadline.weight(.semibold)).padding(.horizontal, 11).padding(.vertical, 3)
+                    Text($0).font(.willys(.subheadline, poids: .semibold)).padding(.horizontal, 11).padding(.vertical, 3)
                         .background(Theme.porte(scheme), in: Capsule())
                 }
             }
@@ -161,17 +161,29 @@ struct LigneArticle: View {
             Circle().fill(Categorie.couleur(article.categorie)).frame(width: 10, height: 10)
             VStack(alignment: .leading, spacing: 2) {
                 Text(article.nom).bold() + Text(article.quantite.isEmpty ? "" : " · \(article.quantite)").foregroundColor(.secondary)
-                Text(etat).font(.footnote).foregroundStyle(urgent ? Theme.alerte : .secondary).fontWeight(urgent ? .semibold : .regular)
+                Text(etat).font(.willys(.footnote)).foregroundStyle(urgent ? Theme.alerte : .secondary).fontWeight(urgent ? .semibold : .regular)
             }
             Spacer()
-            Button("Mangé") { Cuisine.manger(article, par: moi, dans: ctx); Base.rafraichirWidgets() }
-                .buttonStyle(.borderedProminent).tint(Theme.ok).font(.footnote.bold())
+            Button("Mangé", systemImage: "checkmark") {
+                Retour.succes()
+                avecAnimation { Cuisine.manger(article, par: moi, dans: ctx) }
+                Base.rafraichirWidgets()
+            }
+            .buttonStyle(.borderedProminent).buttonBorderShape(.capsule).tint(Theme.ok)
+            .font(.willys(.footnote, poids: .bold))
+            .accessibilityHint("Retire \(article.nom) du stock et ajoute son prix au boni")
             Menu {
                 Button("Jeté", role: .destructive) { jeter() }
-                Button("Retirer sans compter", role: .destructive) { ctx.delete(article); ctx.enregistrer(); Base.rafraichirWidgets() }
-            } label: { Image(systemName: "ellipsis.circle") }
+                Button("Retirer sans compter", role: .destructive) {
+                    avecAnimation { ctx.delete(article); ctx.enregistrer() }; Base.rafraichirWidgets()
+                }
+            } label: {
+                Image(systemName: "ellipsis.circle").font(.title3).frame(width: 44, height: 44)
+            }
+            .accessibilityLabel("Autres actions")
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, 2)
+        .transition(.sort)
     }
 
     private var urgent: Bool { (article.joursRestants ?? 99) <= (article.rangement == "armoire" ? 14 : 1) }
@@ -196,7 +208,9 @@ struct LigneArticle: View {
                                 "at": Date.now.timeIntervalSince1970 * 1000, "date": Jour.aujourdhui]
         let json = (try? JSONSerialization.data(withJSONObject: d)) ?? Data()
         ctx.insert(DocumentBrut(collection: "waste", cle: UUID().uuidString, json: json, foyer: article.foyer))
-        ctx.delete(article); ctx.enregistrer(); Base.rafraichirWidgets()
+        Retour.avertissement()
+        avecAnimation { ctx.delete(article); ctx.enregistrer() }
+        Base.rafraichirWidgets()
     }
 }
 
@@ -211,27 +225,28 @@ struct ModeThermomix: View {
         let e = etapes[min(i, etapes.count - 1)]
         VStack(spacing: 24) {
             HStack {
-                Text(recette.titre).font(.headline)
+                Text(recette.titre).font(.willys(.headline))
                 Spacer()
                 Text("\(i + 1) / \(etapes.count)").monospacedDigit()
                 Button("Fermer") { fermer() }.buttonStyle(.bordered)
             }
             ProgressView(value: Double(i + 1), total: Double(etapes.count)).tint(Color(hex: 0x4FD1A1))
             Spacer()
-            Text(e.text).font(.system(size: 32, weight: .semibold)).frame(maxWidth: 760, alignment: .leading)
+            Text(e.text).font(.willys(.title, poids: .semibold)).frame(maxWidth: 760, alignment: .leading)
+                .id(i).transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .opacity))
             HStack(spacing: 12) {
                 cadran(e.time, "Temps"); cadran(e.temp, "Température"); cadran(e.speed + (e.reverse ? " ↺" : ""), "Vitesse")
             }
             Spacer()
             HStack(spacing: 12) {
-                Button { i = max(0, i - 1) } label: { Text("Précédent").frame(maxWidth: .infinity).padding(18) }
+                Button { Retour.leger(); avecAnimation { i = max(0, i - 1) } } label: { Text("Précédent").frame(maxWidth: .infinity).padding(18) }
                     .background(Color(hex: 0x2B3540), in: RoundedRectangle(cornerRadius: 18)).disabled(i == 0)
-                Button { if i < etapes.count - 1 { i += 1 } else { fermer() } } label: {
+                Button { Retour.leger(); if i < etapes.count - 1 { avecAnimation { i += 1 } } else { Retour.succes(); fermer() } } label: {
                     Text(i < etapes.count - 1 ? "Suivant" : "Terminé").frame(maxWidth: .infinity).padding(18)
                 }
                 .background(Color(hex: 0x4FD1A1), in: RoundedRectangle(cornerRadius: 18)).foregroundStyle(Color(hex: 0x08251A))
             }
-            .font(.title3.bold())
+            .font(.willys(.title3, poids: .bold))
         }
         .padding(20)
         .foregroundStyle(Color(hex: 0xF2F5F7))
@@ -243,8 +258,8 @@ struct ModeThermomix: View {
     @ViewBuilder private func cadran(_ v: String, _ nom: String) -> some View {
         if !v.trimmingCharacters(in: .whitespaces).isEmpty {
             VStack {
-                Text(v).font(.system(size: 30, weight: .heavy, design: .rounded)).foregroundStyle(Color(hex: 0x4FD1A1))
-                Text(nom.uppercased()).font(.caption).foregroundStyle(Color(hex: 0x9FB0BD))
+                Text(v).font(Theme.titre(30)).foregroundStyle(Color(hex: 0x4FD1A1))
+                Text(nom.uppercased()).font(.willys(.caption)).foregroundStyle(Color(hex: 0x9FB0BD))
             }
             .frame(maxWidth: .infinity).padding(12).background(Color(hex: 0x222B34), in: RoundedRectangle(cornerRadius: 16))
         }

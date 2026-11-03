@@ -37,6 +37,23 @@ natives. Tout le reste (jardin, récoltes, restos, entretien, papiers, IBAN…) 
 et pourra recevoir son écran plus tard. Reprendre deux fois le même fichier ne crée pas de doublons.
 Les sauvegardes ne doivent jamais être ajoutées à ce dépôt (le `.gitignore` les exclut).
 
+## Le look et les règles de design d'Apple
+
+- **Polices de l'app web** : Bricolage Grotesque (titres), Figtree (texte) et Gochi Hand
+  (écriture à la main), embarquées dans `Shared/Fonts` (licence libre OFL, texte joint).
+- **Taille du texte** : tout suit le réglage *Taille du texte* d'iOS (Dynamic Type), y compris
+  les polices de la famille.
+- **Mode sombre**, couleur d'accent et fond d'écran au lancement définis dans le catalogue de couleurs.
+- **Retours haptiques** discrets : l'aimant qui se colle quand on choisit quelqu'un, une
+  confirmation quand on touche « Mangé » ou qu'on laisse un mot, une alerte légère quand on jette.
+- **Animations** : post-it qui se collent, articles qui glissent hors du stock, compteur du boni
+  qui défile, étapes Thermomix qui s'enchaînent. Toutes se coupent si *Réduire les animations*
+  est activé dans Réglages › Accessibilité.
+- **Accessibilité** : VoiceOver lit les aimants par prénom, les post-it (« Mot de Loulou : … »),
+  les jours du calendrier et les réactions ; zones à toucher d'au moins 44 points.
+- Écrans vides au format Apple (`ContentUnavailableView`), confirmation avant les actions
+  importantes, actions de partage dans les menus.
+
 ## Le partage entre les huit membres (iCloud, sans service tiers)
 
 Toute la famille a un iPhone : les données sont partagées par **iCloud**, gratuitement, sans
@@ -105,6 +122,6 @@ Widgets/                 les cinq widgets
 - **Menu « avec ce qu'on a »** via l'API de Claude, si on veut garder cette fonction.
 - Écrans natifs pour l'entretien, les pièces, le matériel, les papiers, les restos et les IBAN
   (données déjà importées, pas encore affichées).
-- Police manuscrite identique à l'app web : ajouter `GochiHand-Regular.ttf` (licence OFL) au
-  projet et à `UIAppFonts` ; l'app l'utilise automatiquement si elle est présente.
+- **L'icône de l'app** : le dossier `App/Assets.xcassets/AppIcon.appiconset` attend une image
+  1024 × 1024, idéalement préparée dans *Icon Composer* (Apple, gratuit).
 - Réglage du lieu habituel de chaque foyer pour le widget « Qui est où » (Belgique par défaut).

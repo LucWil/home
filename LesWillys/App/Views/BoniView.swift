@@ -26,15 +26,17 @@ struct BoniView: View {
             Section {
                 VStack(alignment: .leading, spacing: 10) {
                     Text(fiche?.objectifLibelle.isEmpty == false ? "Le boni paie \(fiche!.objectifLibelle)" : "Gagné pour les vacances")
-                        .font(.caption.weight(.semibold)).textCase(.uppercase)
-                    Text(total.euros).font(.system(size: 52, weight: .heavy, design: .rounded)).monospacedDigit()
+                        .font(.willys(.caption, poids: .semibold)).textCase(.uppercase)
+                    Text(total.euros).font(Theme.titre(52)).monospacedDigit()
+                        .contentTransition(.numericText(value: total))
+                        .animation(Anim.douce, value: total)
                     if let cible = fiche?.objectifMontant, cible > 0 {
                         ProgressView(value: min(total, cible), total: cible).tint(Theme.ok)
                         Text("sur \(cible.euros) · \(Int(min(100, total / cible * 100))) %").foregroundStyle(.secondary)
                     }
-                    Text("Ce trimestre : \(trimestre.euros)").font(.subheadline.bold())
+                    Text("Ce trimestre : \(trimestre.euros)").font(.willys(.subheadline, poids: .bold))
                     Text("Chaque produit du stock mangé au lieu d'être racheté vient grossir ce compteur.")
-                        .font(.footnote).foregroundStyle(.secondary)
+                        .font(.willys(.footnote)).foregroundStyle(.secondary)
                     Button(fiche?.objectifMontant ?? 0 > 0 ? "Changer l'objectif" : "Donner un but au boni") { objectif = true }
                         .buttonStyle(.bordered)
                 }

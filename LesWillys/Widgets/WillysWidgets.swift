@@ -124,7 +124,7 @@ struct Pastille: View {
         case "lu": ("Luxembourg", Color(hex: 0x93A3AD))
         default: ("Belgique", Color(hex: 0xC0392B))
         }
-        Text(t).font(.caption2.bold()).padding(.horizontal, 7).padding(.vertical, 2)
+        Text(t).font(.willys(.caption2, poids: .bold)).padding(.horizontal, 7).padding(.vertical, 2)
             .background(c.opacity(lieu == "fj" ? 1 : 0.2), in: Capsule())
             .foregroundStyle(lieu == "fj" ? .white : .primary)
     }
@@ -136,18 +136,18 @@ struct AMangerWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: "aManger", provider: Fournisseur()) { e in
             VStack(alignment: .leading, spacing: 6) {
-                HStack { Text("À manger cette semaine").font(.headline); Spacer(); Image(systemName: "refrigerator") }
+                HStack { Text("À manger cette semaine").font(.willys(.headline)); Spacer(); Image(systemName: "refrigerator") }
                 if e.aManger.isEmpty {
                     Spacer(); Text("Rien qui presse. Bravo !").foregroundStyle(.secondary); Spacer()
                 }
                 ForEach(e.aManger.prefix(4), id: \.self) { a in
                     HStack(spacing: 8) {
                         Circle().fill(Categorie.couleur(a.categorie)).frame(width: 9, height: 9)
-                        Text(a.nom).font(.subheadline.bold()).lineLimit(1)
+                        Text(a.nom).font(.willys(.subheadline, poids: .bold)).lineLimit(1)
                         Spacer()
                         Text(a.jours < 0 ? "dépassé" : a.jours == 0 ? "auj." : "\(a.jours) j")
-                            .font(.caption).foregroundStyle(a.jours <= 0 ? Theme.alerte : .secondary)
-                        Button(intent: MangerIntent(cle: a.cle)) { Text("Mangé").font(.caption.bold()) }
+                            .font(.willys(.caption)).foregroundStyle(a.jours <= 0 ? Theme.alerte : .secondary)
+                        Button(intent: MangerIntent(cle: a.cle)) { Text("Mangé").font(.willys(.caption, poids: .bold)) }
                             .tint(Theme.ok)
                     }
                 }
@@ -172,7 +172,7 @@ struct PetitsMotsWidget: Widget {
                         Aimant(membre: mot.auteur, taille: 26)
                         Text(mot.texte).font(Theme.main(19)).foregroundStyle(Theme.encrePostit).minimumScaleFactor(0.6)
                         Spacer(minLength: 0)
-                        Text(Famille.membre(mot.auteur)?.nom ?? "").font(.caption2).foregroundStyle(Theme.encrePostit.opacity(0.7))
+                        Text(Famille.membre(mot.auteur)?.nom ?? "").font(.willys(.caption2)).foregroundStyle(Theme.encrePostit.opacity(0.7))
                     }
                 } else {
                     Text("Pas encore de petit mot.").font(Theme.main(18)).foregroundStyle(Theme.encrePostit)
@@ -194,11 +194,11 @@ struct QuiEstOuWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: "quiEstOu", provider: Fournisseur()) { e in
             VStack(alignment: .leading, spacing: 6) {
-                Text("Qui est où ce week-end").font(.headline)
+                Text("Qui est où ce week-end").font(.willys(.headline))
                 ForEach(e.foyers, id: \.self) { f in
                     HStack {
                         PileAimants(membres: f.membres, taille: 20)
-                        Text(f.nom).font(.subheadline).lineLimit(1)
+                        Text(f.nom).font(.willys(.subheadline)).lineLimit(1)
                         Spacer()
                         Pastille(lieu: f.lieu)
                     }
@@ -225,19 +225,19 @@ struct CetteSemaineWidget: Widget {
                     Link(destination: URL(string: "willys://calendrier")!) {
                         HStack(spacing: 10) {
                             VStack(spacing: 0) {
-                                Text(Jour.date(ev.debut).formatted(.dateTime.day())).font(.headline)
-                                Text(Jour.joli(ev.debut, .dateTime.weekday(.abbreviated))).font(.caption2).textCase(.uppercase)
+                                Text(Jour.date(ev.debut).formatted(.dateTime.day())).font(.willys(.headline))
+                                Text(Jour.joli(ev.debut, .dateTime.weekday(.abbreviated))).font(.willys(.caption2)).textCase(.uppercase)
                             }
                             .frame(width: 40).padding(.vertical, 3)
                             .background((TypeEvenement(rawValue: ev.type)?.couleur ?? .gray).opacity(0.2), in: RoundedRectangle(cornerRadius: 8))
-                            Text(ev.titre).font(.subheadline.bold()).lineLimit(1)
+                            Text(ev.titre).font(.willys(.subheadline, poids: .bold)).lineLimit(1)
                             Spacer()
                             PileAimants(membres: ev.personnes, taille: 18)
                         }
                     }
                 }
                 Spacer(minLength: 0)
-                if let v = e.prochainVoyage { Label(v, systemImage: "airplane").font(.footnote).lineLimit(1) }
+                if let v = e.prochainVoyage { Label(v, systemImage: "airplane").font(.willys(.footnote)).lineLimit(1) }
                 if let m = e.mot {
                     HStack { Aimant(membre: m.auteur, taille: 18); Text(m.texte).font(Theme.main(16)).lineLimit(1) }
                 }
@@ -266,8 +266,8 @@ struct BoniWidget: Widget {
                     .gaugeStyle(.accessoryCircular)
                 } else {
                     VStack(alignment: .leading) {
-                        Text("Boni du trimestre").font(.caption2)
-                        Text(e.boniTrimestre.euros).font(.headline)
+                        Text("Boni du trimestre").font(.willys(.caption2))
+                        Text(e.boniTrimestre.euros).font(.willys(.headline))
                     }
                 }
             }

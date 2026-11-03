@@ -20,13 +20,16 @@ struct IdeesView: View {
     var body: some View {
         ScrollView {
             if idees.isEmpty {
-                VStack(spacing: 12) {
-                    Text(genre == "voyage" ? "Aucun voyage proposé pour l'instant." : "Aucune idée de week-end pour l'instant.")
-                        .foregroundStyle(.secondary)
+                ContentUnavailableView {
+                    Label(genre == "voyage" ? "Pas encore de voyage" : "Pas encore de week-end",
+                          systemImage: genre == "voyage" ? "airplane" : "sun.max")
+                } description: {
+                    Text("Propose une idée : toute la famille pourra dire si elle en est.")
+                } actions: {
                     Button(genre == "voyage" ? "Proposer un voyage" : "Proposer un week-end") { ajout = true }
                         .buttonStyle(.borderedProminent)
                 }
-                .frame(maxWidth: .infinity).padding(40)
+                .padding(.top, 40)
             }
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 280), spacing: 16)], spacing: 16) {
                 ForEach(idees) { i in CarteIdee(idee: i, moi: moi, reactions: reactions.filter { $0.element == i.cle }) }
@@ -35,7 +38,7 @@ struct IdeesView: View {
         }
         .background(Theme.emaille(scheme))
         .navigationTitle(genre == "voyage" ? "Voyages" : "Week-ends")
-        .toolbar { Button { ajout = true } label: { Image(systemName: "plus") } }
+        .toolbar { Button { ajout = true } label: { Label("Proposer", systemImage: "plus") } }
         .sheet(isPresented: $ajout) { NavigationStack { FormulaireIdee(genre: genre, moi: moi) } }
     }
 }
@@ -59,7 +62,7 @@ struct CarteIdee: View {
                                    startPoint: .topLeading, endPoint: .bottomTrailing)
                 }
                 if !idee.prix.isEmpty {
-                    Text("\(idee.prix) € / pers.").font(.footnote.bold()).padding(.horizontal, 10).padding(.vertical, 3)
+                    Text("\(idee.prix) € / pers.").font(.willys(.footnote, poids: .bold)).padding(.horizontal, 10).padding(.vertical, 3)
                         .background(Theme.porte(scheme), in: Capsule()).padding(10)
                 }
             }
@@ -67,26 +70,26 @@ struct CarteIdee: View {
 
             VStack(alignment: .leading, spacing: 8) {
                 HStack { Aimant(membre: idee.par, taille: 26); Text(idee.titre).font(Theme.titre(19)) }
-                if !idee.quand.isEmpty { Label(idee.quand, systemImage: "calendar").font(.subheadline).foregroundStyle(.secondary) }
-                if !idee.note.isEmpty { Text(idee.note).font(.subheadline) }
-                if let url = URL(string: idee.lien), !idee.lien.isEmpty { Link("Voir l'offre", destination: url).font(.subheadline.bold()) }
+                if !idee.quand.isEmpty { Label(idee.quand, systemImage: "calendar").font(.willys(.subheadline)).foregroundStyle(.secondary) }
+                if !idee.note.isEmpty { Text(idee.note).font(.willys(.subheadline)) }
+                if let url = URL(string: idee.lien), !idee.lien.isEmpty { Link("Voir l'offre", destination: url).font(.willys(.subheadline, poids: .bold)) }
                 HStack(spacing: 6) {
                     ForEach(Self.choix, id: \.0) { k, e, l in
                         let n = reactions.filter { $0.reaction == k }.count
                         let mienne = reactions.first { $0.membre == moi }?.reaction == k
-                        Button { Reactions.basculer(element: idee.cle, membre: moi, reaction: k, existantes: reactions, ctx: ctx) } label: {
-                            Text("\(e) \(l)\(n > 0 ? " · \(n)" : "")").font(.footnote)
-                                .padding(.horizontal, 10).padding(.vertical, 4)
-                                .background(mienne ? Color.primary : .clear, in: Capsule())
-                                .foregroundStyle(mienne ? Color(uiColor: .systemBackground) : .primary)
-                                .overlay(Capsule().stroke(.secondary.opacity(0.3)))
+                        Button {
+                            Retour.selection()
+                            avecAnimation { Reactions.basculer(element: idee.cle, membre: moi, reaction: k, existantes: reactions, ctx: ctx) }
+                        } label: {
+                            Text("\(e) \(l)\(n > 0 ? " · \(n)" : "")").contentTransition(.numericText())
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(StylePastille(active: mienne))
+                        .accessibilityLabel("\(l), \(n) personne\(n > 1 ? "s" : "")")
                     }
                 }
                 let partants = reactions.filter { $0.reaction == "partant" }.map(\.membre)
                 if !partants.isEmpty {
-                    HStack { PileAimants(membres: partants, taille: 20); Text("en sont").font(.caption).foregroundStyle(.secondary) }
+                    HStack { PileAimants(membres: partants, taille: 20); Text("en sont").font(.willys(.caption)).foregroundStyle(.secondary) }
                 }
             }
             .padding([.horizontal, .bottom], 16)
@@ -97,7 +100,11 @@ struct CarteIdee: View {
         .shadow(color: .black.opacity(0.08), radius: 10, y: 6)
         .contextMenu {
             ShareLink(item: "\(idee.titre)\(idee.quand.isEmpty ? "" : " — \(idee.quand)") \(idee.lien)")
-            if idee.par == moi { Button("Retirer", role: .destructive) { ctx.delete(idee); ctx.enregistrer() } }
+            if idee.par == moi {
+                Button("Retirer", systemImage: "trash", role: .destructive) {
+                    Retour.avertissement(); avecAnimation { ctx.delete(idee); ctx.enregistrer() }
+                }
+            }
         }
     }
 }

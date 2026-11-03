@@ -38,16 +38,22 @@ struct CalendrierView: View {
         }
         .background(Theme.emaille(scheme))
         .navigationTitle("Calendrier")
-        .toolbar { Button { ajout = true } label: { Image(systemName: "plus") } }
+        .toolbar { Button { ajout = true } label: { Label("Ajouter une date", systemImage: "plus") } }
         .sheet(isPresented: $ajout) { NavigationStack { FormulaireEvenement(moi: moi, jour: jourChoisi) } }
     }
 
     private var entete: some View {
         HStack {
-            Button { mois = cal.date(byAdding: .month, value: -1, to: mois)! } label: { Image(systemName: "chevron.left") }
+            Button { Retour.leger(); avecAnimation { mois = cal.date(byAdding: .month, value: -1, to: mois)! } } label: {
+                Image(systemName: "chevron.left").frame(width: 28, height: 28)
+            }
+            .accessibilityLabel("Mois précédent")
             Text(mois.formatted(.dateTime.month(.wide).year().locale(Locale(identifier: "fr_BE"))).capitalized)
                 .font(Theme.titre(24)).frame(maxWidth: .infinity)
-            Button { mois = cal.date(byAdding: .month, value: 1, to: mois)! } label: { Image(systemName: "chevron.right") }
+            Button { Retour.leger(); avecAnimation { mois = cal.date(byAdding: .month, value: 1, to: mois)! } } label: {
+                Image(systemName: "chevron.right").frame(width: 28, height: 28)
+            }
+            .accessibilityLabel("Mois suivant")
         }
         .buttonStyle(.bordered)
     }
@@ -65,7 +71,7 @@ struct CalendrierView: View {
         VStack(spacing: 4) {
             HStack(spacing: 4) {
                 ForEach(["lun", "mar", "mer", "jeu", "ven", "sam", "dim"], id: \.self) {
-                    Text($0).font(.caption2.weight(.semibold)).textCase(.uppercase).foregroundStyle(.secondary).frame(maxWidth: .infinity)
+                    Text($0).font(.willys(.caption2, poids: .semibold)).textCase(.uppercase).foregroundStyle(.secondary).frame(maxWidth: .infinity)
                 }
             }
             ForEach(semaines, id: \.first) { semaine in
@@ -102,11 +108,11 @@ struct CalendrierView: View {
         let j = Jour.chaine(d)
         let du = evenements.filter { $0.debut <= j && $0.fin >= j }
         let dansMois = cal.isDate(d, equalTo: mois, toGranularity: .month)
-        return Button { jourChoisi = j } label: {
+        return Button { Retour.selection(); avecAnimation { jourChoisi = j } } label: {
             VStack(alignment: .leading, spacing: 2) {
-                Text(d.formatted(.dateTime.day())).font(.caption.bold()).monospacedDigit()
+                Text(d.formatted(.dateTime.day())).font(.willys(.caption, poids: .bold)).monospacedDigit()
                 ForEach(du.prefix(3)) { e in
-                    Text(e.titre).font(.system(size: 10)).lineLimit(1).foregroundStyle(.white)
+                    Text(e.titre).font(.willys(.caption2)).lineLimit(1).foregroundStyle(.white)
                         .padding(.horizontal, 3).frame(maxWidth: .infinity, alignment: .leading)
                         .background(e.typeEvenement.couleur, in: RoundedRectangle(cornerRadius: 3))
                 }
@@ -121,6 +127,8 @@ struct CalendrierView: View {
             .opacity(dansMois ? 1 : 0.4)
         }
         .buttonStyle(.plain)
+        .accessibilityLabel("\(Jour.joli(j)), \(du.isEmpty ? "rien de prévu" : du.map(\.titre).joined(separator: ", "))")
+        .accessibilityAddTraits(j == jourChoisi ? .isSelected : [])
     }
 
     private var legende: some View {
@@ -130,6 +138,6 @@ struct CalendrierView: View {
                 HStack(spacing: 6) { Capsule().fill(c).frame(width: 24, height: 6); Text(n) }
             }
         }
-        .font(.caption).foregroundStyle(.secondary)
+        .font(.willys(.caption)).foregroundStyle(.secondary)
     }
 }

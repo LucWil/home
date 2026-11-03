@@ -14,16 +14,23 @@ struct ChoixAimants: View {
                 ForEach(membres) { m in
                     let pris = choisis.contains(m.id)
                     Button {
+                        Retour.aimant()
                         if unSeul { choisis = pris ? [] : [m.id] }
                         else if pris { choisis.removeAll { $0 == m.id } } else { choisis.append(m.id) }
                     } label: {
                         VStack(spacing: 4) {
-                            Aimant(membre: m.id, taille: 40)
-                                .padding(2).overlay(Circle().stroke(pris ? Color.primary : .clear, lineWidth: 2))
-                            Text(m.nom).font(.caption2)
+                            Aimant(membre: m.id, taille: 44)
+                                .padding(3).overlay(Circle().stroke(pris ? Theme.accent : .clear, lineWidth: 3))
+                                .overlay(alignment: .bottomTrailing) {
+                                    if pris { Image(systemName: "checkmark.circle.fill").foregroundStyle(.white, Theme.accent).transition(.scale) }
+                                }
+                            Text(m.nom).font(.willys(.caption2, poids: pris ? .bold : nil))
                         }
+                        .animation(Anim.rebond, value: pris)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(StyleAimant())
+                    .accessibilityLabel(m.nom)
+                    .accessibilityAddTraits(pris ? .isSelected : [])
                 }
             }
         }
@@ -49,7 +56,8 @@ struct FormulaireMot: View {
             ToolbarItem(placement: .cancellationAction) { Button("Annuler") { fermer() } }
             ToolbarItem(placement: .confirmationAction) {
                 Button("Laisser le mot") {
-                    ctx.insert(Idee(genre: "mot", titre: texte.trimmingCharacters(in: .whitespacesAndNewlines), par: moi))
+                    Retour.succes()
+                    avecAnimation { ctx.insert(Idee(genre: "mot", titre: texte.trimmingCharacters(in: .whitespacesAndNewlines), par: moi)) }
                     ctx.enregistrer(); Base.rafraichirWidgets(); fermer()
                 }.disabled(texte.trimmingCharacters(in: .whitespaces).isEmpty)
             }
@@ -92,7 +100,7 @@ struct FormulaireEvenement: View {
                     let qui = type == .garde ? enfant + personnes.filter { !enfant.contains($0) } : personnes
                     ctx.insert(Evenement(type: type.rawValue, titre: titre, debut: Jour.chaine(debut), fin: Jour.chaine(max(fin, debut)),
                                          personnes: qui, gardeChez: type == .garde ? gardeChez : nil, par: moi))
-                    ctx.enregistrer(); Base.rafraichirWidgets(); fermer()
+                    Retour.succes(); ctx.enregistrer(); Base.rafraichirWidgets(); fermer()
                 }.disabled(titre.isEmpty)
             }
         }
@@ -124,7 +132,7 @@ struct FormulaireIdee: View {
                     let i = Idee(genre: genre, titre: titre, par: moi)
                     i.quand = quand; i.prix = prix; i.note = note
                     i.lien = lien.hasPrefix("https://") ? lien : ""; i.photo = photo.hasPrefix("https://") ? photo : ""
-                    ctx.insert(i); ctx.enregistrer(); Base.rafraichirWidgets(); fermer()
+                    Retour.succes(); ctx.insert(i); ctx.enregistrer(); Base.rafraichirWidgets(); fermer()
                 }.disabled(titre.isEmpty)
             }
         }
@@ -176,7 +184,7 @@ struct FormulaireArticle: View {
                     if ou == .frais, let j = Int(bonJours) { a.bonJours = j }
                     if ou == .armoire, avecPeremption { a.peremption = Jour.chaine(peremption) }
                     if ou == .surgelateur { a.tiroir = Self.tiroirs[categorie] ?? 6 }
-                    ctx.insert(a); ctx.enregistrer(); Base.rafraichirWidgets(); fermer()
+                    Retour.succes(); ctx.insert(a); ctx.enregistrer(); Base.rafraichirWidgets(); fermer()
                 }.disabled(nom.isEmpty)
             }
         }
@@ -216,7 +224,7 @@ struct FormulairePhoto: View {
             ToolbarItem(placement: .confirmationAction) {
                 Button("Au mur") {
                     let p = Photo(legende: legende, qui: qui, par: moi); p.image = image
-                    ctx.insert(p); ctx.enregistrer(); Base.rafraichirWidgets(); fermer()
+                    Retour.succes(); ctx.insert(p); ctx.enregistrer(); Base.rafraichirWidgets(); fermer()
                 }.disabled(image == nil)
             }
         }

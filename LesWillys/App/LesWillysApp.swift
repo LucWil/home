@@ -26,6 +26,7 @@ struct LesWillysApp: App {
 final class AppDelegate: NSObject, UIApplicationDelegate {
     func application(_ application: UIApplication, didFinishLaunchingWithOptions options: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
         application.registerForRemoteNotifications()
+        Theme.appliquerAuxBarres()
         return true
     }
 
@@ -87,6 +88,9 @@ struct RacineView: View {
                     }
                 }
                 .tint(Theme.accent)
+                .font(.willys(.body))
+                .transition(.opacity)
+                .sensoryFeedback(.selection, trigger: onglet)
                 .sheet(isPresented: $boniOuvert) { NavigationStack { BoniView(moi: moi) } }
                 .task(id: moi) {
                     noterVisite(moi)
@@ -97,10 +101,12 @@ struct RacineView: View {
                 }
             } else {
                 ChoixMembreView { choisi in
+                    Retour.aimant()
                     Base.moi = choisi
-                    moi = choisi
+                    avecAnimation { moi = choisi }
                     Base.rafraichirWidgets()
                 }
+                .transition(.opacity)
             }
         }
         .background(Theme.emaille(scheme))

@@ -12,15 +12,15 @@ struct ChoixMembreView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 Text(Date.now.formatted(.dateTime.weekday(.wide).day().month(.wide).locale(Locale(identifier: "fr_BE"))))
-                    .font(.caption.weight(.semibold)).textCase(.uppercase).foregroundStyle(.secondary)
-                Text("Qui rentre à la maison ?").font(Theme.titre(34))
+                    .font(.willys(.caption, poids: .semibold)).textCase(.uppercase).foregroundStyle(.secondary)
+                Text("Qui rentre à la maison ?").font(Theme.titre(34)).accessibilityAddTraits(.isHeader)
                 Text("Touche ton aimant. Cet iPhone ou cet iPad s'en souviendra, tu n'auras plus à le refaire.")
                     .foregroundStyle(.secondary)
 
                 maison.padding(.top, 70)
 
                 Text("Les petites sont à l'étage : ce sont les parents qui remplissent leur agenda.")
-                    .font(.footnote).foregroundStyle(.secondary)
+                    .font(.willys(.footnote)).foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity).multilineTextAlignment(.center).padding(.top, 8)
             }
             .padding(20)
@@ -38,7 +38,7 @@ struct ChoixMembreView: View {
                     .font(Theme.main(17)).foregroundStyle(Theme.encrePostit)
                     .padding(10).background(Theme.postit).rotationEffect(.degrees(-3.5))
                 ForEach(Famille.enfants) { e in
-                    HStack(spacing: 6) { Aimant(membre: e.id, taille: 26); Text(e.nom).font(.footnote.bold()) }
+                    HStack(spacing: 6) { Aimant(membre: e.id, taille: 26); Text(e.nom).font(.willys(.footnote, poids: .bold)) }
                         .padding(.vertical, 4).padding(.leading, 4).padding(.trailing, 10)
                         .background(.background, in: Capsule())
                 }
@@ -52,10 +52,11 @@ struct ChoixMembreView: View {
                     Button { choisir(m.id) } label: {
                         VStack(spacing: 7) {
                             Aimant(membre: m.id, taille: 64)
-                            Text(m.nom).font(.system(size: 15, weight: .bold, design: .rounded)).foregroundStyle(.primary)
+                            Text(m.nom).font(.willys(.subheadline, poids: .bold)).foregroundStyle(.primary)
                         }
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(StyleAimant())
+                    .accessibilityLabel("Je suis \(m.nom)")
                     .rotationEffect(.degrees([-6, 4, -2][i % 3]))
                 }
             }
