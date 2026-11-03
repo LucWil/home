@@ -1,0 +1,6 @@
+*.xcodeproj/
+xcuserdata/
+DerivedData/
+.DS_Store
+# Les sauvegardes de la famille ne vont jamais dans le dépôt
+les-willys-sauvegarde-*.json

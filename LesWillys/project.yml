@@ -1,0 +1,68 @@
+# Projet Xcode généré par XcodeGen :  brew install xcodegen && xcodegen
+name: LesWillys
+options:
+  bundleIdPrefix: be.willys
+  deploymentTarget:
+    iOS: "17.0"
+  developmentLanguage: fr
+settings:
+  base:
+    SWIFT_VERSION: "5.9"
+    MARKETING_VERSION: "1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    DEVELOPMENT_TEAM: ""          # ← ton Team ID Apple Developer
+    TARGETED_DEVICE_FAMILY: "1,2" # iPhone et iPad
+targets:
+  LesWillys:
+    type: application
+    platform: iOS
+    sources:
+      - App
+      - Shared
+    info:
+      path: Config/App-Info.plist
+      properties:
+        CFBundleDisplayName: Les Willys
+        CFBundleDevelopmentRegion: fr
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+        UISupportedInterfaceOrientations~ipad:
+          [UIInterfaceOrientationPortrait, UIInterfaceOrientationPortraitUpsideDown,
+           UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
+        UIBackgroundModes: [remote-notification]
+        NSCameraUsageDescription: "Pour photographier les tickets de courses et le mur des petites."
+        NSPhotoLibraryUsageDescription: "Pour ajouter des photos au mur des petites."
+        CFBundleURLTypes:
+          - CFBundleURLName: be.willys.app
+            CFBundleURLSchemes: [willys]
+    entitlements:
+      path: Config/LesWillys.entitlements
+      properties:
+        com.apple.security.application-groups: [group.be.willys.app]
+        com.apple.developer.icloud-container-identifiers: [iCloud.be.willys.app]
+        com.apple.developer.icloud-services: [CloudKit]
+        aps-environment: development
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: be.willys.app
+    dependencies:
+      - target: WillysWidgets
+  WillysWidgets:
+    type: app-extension
+    platform: iOS
+    sources:
+      - Widgets
+      - Shared
+    info:
+      path: Config/Widgets-Info.plist
+      properties:
+        CFBundleDisplayName: Les Willys
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    entitlements:
+      path: Config/WillysWidgets.entitlements
+      properties:
+        com.apple.security.application-groups: [group.be.willys.app]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: be.willys.app.widgets
