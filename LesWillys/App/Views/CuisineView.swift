@@ -15,6 +15,7 @@ struct CuisineView: View {
     @State private var thermomix: Recette?
     @State private var boni = false
     @State private var recherche = ""
+    @State private var fermees: Set<String> = []     // les catégories repliées (toutes ouvertes au départ)
 
     enum Partie: String, CaseIterable, Identifiable {
         case aManger = "À manger", frais = "Le frais", surgelateur = "Surgélateur", armoire = "Armoires", recettes = "Recettes"
@@ -95,14 +96,67 @@ struct CuisineView: View {
         }
     }
 
+    /// Le frais et les armoires, rangés par catégorie : on voit ce qu'on a, et les catégories vides disent ce qui manque.
     private func liste(_ r: Rangement) -> some View {
         let articles = monStock.filter { $0.rangement == r.rawValue }
-            .sorted { ($0.joursRestants ?? 9999) < ($1.joursRestants ?? 9999) }
-        return Porte {
-            HStack { Text(r.libelle).font(Theme.titre(22)); Spacer(); Text("\(articles.count)").foregroundStyle(.secondary) }
-            if articles.isEmpty { Text("Vide pour l'instant.").foregroundStyle(.secondary) }
-            ForEach(articles) { LigneArticle(article: $0, moi: moi) }
-            Button("Ranger quelque chose") { ajout = r }.buttonStyle(.bordered)
+        let attendues = Categorie.attendues(dans: r.rawValue)
+        // un article d'une catégorie inattendue (ou inconnue) est rangé dans « Autre »
+        func categorie(_ a: Article) -> String { Categorie.toutes.contains { $0.id == a.categorie } ? a.categorie : "autre" }
+        let ordre = attendues + Categorie.toutes.map(\.id).filter { !attendues.contains($0) }
+        let groupes = ordre.map { id in
+            (id: id, items: articles.filter { categorie($0) == id }
+                .sorted { ($0.joursRestants ?? 9999, $0.nom) < ($1.joursRestants ?? 9999, $1.nom) })
+        }
+        let remplis = groupes.filter { !$0.items.isEmpty }
+        let vides = groupes.filter { $0.items.isEmpty && attendues.contains($0.id) }
+        return VStack(spacing: 12) {
+            Porte {
+                HStack {
+                    Text(r.libelle).font(Theme.titre(22)); Spacer()
+                    Text("\(articles.count) article\(articles.count > 1 ? "s" : "")").foregroundStyle(.secondary)
+                }
+                if articles.isEmpty { Text("Vide pour l'instant.").foregroundStyle(.secondary) }
+                Button("Ranger quelque chose") { ajout = r }.buttonStyle(.bordered).frame(minHeight: 44)
+            }
+            ForEach(remplis, id: \.id) { g in
+                let urgents = g.items.filter { ($0.joursRestants ?? 99) <= (r == .armoire ? 14 : 1) }.count
+                Porte {
+                    DisclosureGroup(isExpanded: Binding(
+                        get: { !fermees.contains(r.rawValue + g.id) },
+                        set: { ouvert in
+                            Retour.selection()
+                            avecAnimation { if ouvert { fermees.remove(r.rawValue + g.id) } else { fermees.insert(r.rawValue + g.id) } }
+                        })) {
+                        ForEach(g.items) { LigneArticle(article: $0, moi: moi) }
+                    } label: {
+                        HStack(spacing: 10) {
+                            Circle().fill(Categorie.couleur(g.id)).frame(width: 12, height: 12)
+                            Text(Categorie.nom(g.id)).font(Theme.titre(18))
+                            Spacer()
+                            if urgents > 0 {
+                                Text("\(urgents) à finir").font(.willys(.caption, poids: .bold)).foregroundStyle(Theme.alerte)
+                            }
+                            Text("\(g.items.count)").font(.willys(.subheadline, poids: .bold)).monospacedDigit().foregroundStyle(.secondary)
+                        }
+                        .frame(minHeight: 44)
+                    }
+                }
+            }
+            if !vides.isEmpty && !articles.isEmpty && recherche.isEmpty {
+                Porte(teinte: Theme.alerte) {
+                    Text("Il n'y en a pas").font(.willys(.headline))
+                    Text("Aucun article dans ces catégories : c'est peut-être ce qui manque.")
+                        .font(.willys(.footnote)).foregroundStyle(.secondary)
+                    FlowLayout(spacing: 8) {
+                        ForEach(vides, id: \.id) { g in
+                            Label(Categorie.nom(g.id), systemImage: "exclamationmark.circle")
+                                .font(.willys(.subheadline, poids: .semibold))
+                                .padding(.horizontal, 12).padding(.vertical, 8)
+                                .background(Theme.porte(scheme), in: Capsule())
+                        }
+                    }
+                }
+            }
         }
     }
 

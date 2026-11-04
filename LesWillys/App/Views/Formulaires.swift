@@ -151,12 +151,15 @@ struct FormulaireArticle: View {
     @State private var avecPeremption = false
     @State private var ou: Rangement = .frais
 
+    /// Pour les armoires on propose conserves, épicerie, boissons… ; pour le frais, légumes, crèmerie…
+    private var categoriesProposees: [String] { Categorie.attendues(dans: ou.rawValue) }
+
     var body: some View {
         Form {
             Picker("Où ?", selection: $ou) { ForEach(Rangement.allCases) { Text($0.libelle).tag($0) } }.pickerStyle(.segmented)
             TextField("Nom — ex. Haché porc et bœuf", text: $nom)
             TextField("Quantité — ex. 500 g", text: $quantite)
-            Picker("Catégorie", selection: $categorie) { ForEach(Categorie.toutes, id: \.id) { Text($0.nom).tag($0.id) } }
+            Picker("Catégorie", selection: $categorie) { ForEach(categoriesProposees, id: \.self) { Text(Categorie.nom($0)).tag($0) } }
             DatePicker(ou == .surgelateur ? "Congelé le" : "Acheté le", selection: $depuis, displayedComponents: .date)
             if ou == .frais {
                 TextField("Bon pendant (jours) — sinon \(Categorie.joursFrais[categorie] ?? 4)", text: $bonJours).keyboardType(.numberPad)
@@ -173,7 +176,10 @@ struct FormulaireArticle: View {
         }
         .environment(\.locale, Locale(identifier: "fr_BE"))
         .navigationTitle("Ranger")
-        .onAppear { ou = rangement }
+        .onAppear { ou = rangement; if !categoriesProposees.contains(categorie) { categorie = categoriesProposees.first ?? "autre" } }
+        .onChange(of: ou) { _, _ in
+            if !categoriesProposees.contains(categorie) { categorie = categoriesProposees.first ?? "autre" }
+        }
         .toolbar {
             ToolbarItem(placement: .cancellationAction) { Button("Annuler") { fermer() } }
             ToolbarItem(placement: .confirmationAction) {

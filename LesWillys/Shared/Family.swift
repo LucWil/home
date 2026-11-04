@@ -84,8 +84,20 @@ enum Categorie {
     static let toutes: [(id: String, nom: String)] = [
         ("legumes", "Légumes"), ("fruits", "Fruits"), ("viandes", "Viandes"),
         ("poissons", "Poissons"), ("cremerie", "Crèmerie"), ("pains", "Pains et pâtes"),
-        ("plats", "Plats préparés"), ("epices", "Épices"), ("autre", "Autre"),
+        ("plats", "Plats préparés"), ("epices", "Épices"),
+        ("conserves", "Conserves"), ("epicerie", "Épicerie sèche"), ("petitdej", "Petit-déjeuner"),
+        ("boissons", "Boissons"), ("autre", "Autre"),
     ]
+    /// Les catégories qu'on s'attend à trouver à chaque endroit, dans l'ordre où on les cherche :
+    /// ce qui n'a aucun article apparaît comme « il n'y en a pas », pour voir d'un coup d'œil ce qui manque.
+    static func attendues(dans rangement: String) -> [String] {
+        switch rangement {
+        case "armoire": ["pains", "epicerie", "conserves", "petitdej", "epices", "boissons", "plats", "autre"]
+        case "frais": ["legumes", "fruits", "cremerie", "viandes", "poissons", "pains", "plats", "autre"]
+        default: toutes.map(\.id)
+        }
+    }
+    static func nom(_ id: String) -> String { toutes.first { $0.id == id }?.nom ?? "Autre" }
     static func couleur(_ id: String) -> Color {
         switch id {
         case "viandes": Color(hex: 0xC8456B)
@@ -94,6 +106,12 @@ enum Categorie {
         case "legumes": Color(hex: 0x5F8A2E)
         case "pains": Color(hex: 0xD98A1F)
         case "fruits": Color(hex: 0xE07AA0)
+        case "conserves": Color(hex: 0x8A5CC2)
+        case "epicerie": Color(hex: 0xB8742A)
+        case "petitdej": Color(hex: 0xC99A1B)
+        case "boissons": Color(hex: 0x2A7FA8)
+        case "epices": Color(hex: 0xC0582F)
+        case "cremerie": Color(hex: 0x2C9A8A)
         default: Color(hex: 0x5D6B78)
         }
     }
