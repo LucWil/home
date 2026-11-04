@@ -21,8 +21,12 @@ enum Base {
     /// passe par `SynchroFamille` (CloudKit, zone partagée « Willys »), pas par SwiftData.
     static func conteneur() -> ModelContainer {
         let schema = Schema(Schema_.modeles)
-        let config = ModelConfiguration("LesWillys", schema: schema, groupContainer: .identifier(groupe), cloudKitDatabase: .none)
-        if let c = try? ModelContainer(for: schema, configurations: [config]) { return c }
+        // SwiftData plante (au lieu de renvoyer une erreur) si l'App Group n'existe pas :
+        // on vérifie d'abord qu'il est là (il manque dans une compilation non signée).
+        if FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: groupe) != nil {
+            let config = ModelConfiguration("LesWillys", schema: schema, groupContainer: .identifier(groupe), cloudKitDatabase: .none)
+            if let c = try? ModelContainer(for: schema, configurations: [config]) { return c }
+        }
         // Sans App Group (compilation non signée, simulateur) : base locale à l'app seule.
         let local = ModelConfiguration("LesWillys", schema: schema, groupContainer: .none, cloudKitDatabase: .none)
         return try! ModelContainer(for: schema, configurations: [local])
