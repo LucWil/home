@@ -86,6 +86,7 @@ final class SynchroFamille: ObservableObject {
         ajouter(Evenement.self); ajouter(Idee.self); ajouter(Reaction.self); ajouter(Article.self); ajouter(Boni.self)
         ajouter(Foyer.self); ajouter(Recette.self); ajouter(Photo.self); ajouter(Visite.self); ajouter(DocumentBrut.self)
         ajouter(Activite.self)
+        ajouter(Restaurant.self); ajouter(Sortie.self); ajouter(Hotel.self); ajouter(PhotoLoisir.self)
         FileSynchro.ajouter(lignes)
         envoyerFile()
     }
@@ -225,6 +226,10 @@ final class SynchroFamille: ObservableObject {
         case Visite.typeEnregistrement: return chercher(Visite.self)
         case DocumentBrut.typeEnregistrement: return chercher(DocumentBrut.self)
         case Activite.typeEnregistrement: return chercher(Activite.self)
+        case Restaurant.typeEnregistrement: return chercher(Restaurant.self)
+        case Sortie.typeEnregistrement: return chercher(Sortie.self)
+        case Hotel.typeEnregistrement: return chercher(Hotel.self)
+        case PhotoLoisir.typeEnregistrement: return chercher(PhotoLoisir.self)
         default: return nil
         }
     }
@@ -243,6 +248,10 @@ final class SynchroFamille: ObservableObject {
         case Photo.typeEnregistrement: let p = Photo(legende: "", qui: [], par: ""); p.cle = id; o = p
         case Visite.typeEnregistrement: o = Visite(membre: id)
         case Activite.typeEnregistrement: let a = Activite(membre: "", genre: "", onglet: "accueil", detail: ""); a.cle = id; o = a
+        case Restaurant.typeEnregistrement: let r = Restaurant(nom: "", ville: "", par: ""); r.cle = id; o = r
+        case Sortie.typeEnregistrement: let s = Sortie(ref: "", nom: "", lieu: "", foyer: "", par: ""); s.cle = id; o = s
+        case Hotel.typeEnregistrement: let h = Hotel(nom: "", ville: "", foyer: "", par: ""); h.cle = id; o = h
+        case PhotoLoisir.typeEnregistrement: let p = PhotoLoisir(parent: "", quoi: "", image: nil, par: ""); p.cle = id; o = p
         case DocumentBrut.typeEnregistrement:
             let m = id.split(separator: ":", maxSplits: 1).map(String.init)
             o = DocumentBrut(collection: m.first ?? "", cle: m.count > 1 ? m[1] : id, json: Data(), foyer: "")

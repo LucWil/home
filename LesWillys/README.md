@@ -37,6 +37,24 @@ natives. Tout le reste (jardin, récoltes, restos, entretien, papiers, IBAN…) 
 et pourra recevoir son écran plus tard. Reprendre deux fois le même fichier ne crée pas de doublons.
 Les sauvegardes ne doivent jamais être ajoutées à ce dépôt (le `.gitignore` les exclut).
 
+## Loisirs : restaurants, hôtels et budget des sorties
+
+Le cinquième onglet (les week-ends ont rejoint Voyages, avec un choix en haut) :
+
+- **Restaurants** : fiche (adresse, carte Plans, téléphone, site ou réservation, menu avec les prix,
+  avis clients), complétée chaque soir par Claude dans l'app web, ou à la main. **« On y est allés »** :
+  date, addition et prix par personne, qui était là, photos du plat et de l'ambiance, impression de
+  chacun ; puis **« Laisser un avis »** copie le texte et ouvre Google ou Tripadvisor.
+- **Hôtels** : dates et nuits, prix, numéro et lien de réservation, options, **annulation gratuite**
+  avec rappel au calendrier, recherche Booking avec les dates ; après le séjour, **note finale**
+  (moyenne de la famille), prix payé, photos de la chambre et de l'ambiance.
+- **Le budget** (visible seulement par le foyer) : total de l'année, restaurants et hôtels hors
+  vacances, moyenne par mois, et une partie **Vacances** voyage par voyage (une sortie datée pendant un
+  voyage ou un séjour à Fréjus du calendrier y est rangée automatiquement).
+
+Code : `Shared/Loisirs.swift` (modèles et synchronisation iCloud) et `App/Views/LoisirsView.swift`.
+L'import d'une sauvegarde de l'app web reprend aussi les restaurants, les sorties, les hôtels et leurs photos.
+
 ## La vie de la maison : qui fait quoi, qui est là
 
 - **« Ça bouge à la maison »** (accueil) : le fil de ce que fait chacun — « Loulou a rangé

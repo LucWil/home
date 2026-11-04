@@ -46,7 +46,7 @@ final class SceneDelegate: NSObject, UIWindowSceneDelegate {
 
 /// Les six onglets, comme dans l'app web.
 enum Onglet: String, CaseIterable, Identifiable {
-    case accueil, calendrier, voyages, cuisine, weekends, chezNous = "chez-nous"
+    case accueil, calendrier, voyages, cuisine, loisirs, chezNous = "chez-nous"
     var id: String { rawValue }
     var titre: String {
         switch self {
@@ -54,7 +54,7 @@ enum Onglet: String, CaseIterable, Identifiable {
         case .calendrier: "Calendrier"
         case .voyages: "Voyages"
         case .cuisine: "Cuisine"
-        case .weekends: "Week-ends"
+        case .loisirs: "Loisirs"
         case .chezNous: "Chez nous"
         }
     }
@@ -64,7 +64,7 @@ enum Onglet: String, CaseIterable, Identifiable {
         case .calendrier: "calendar"
         case .voyages: "airplane"
         case .cuisine: "frying.pan"
-        case .weekends: "sun.max"
+        case .loisirs: "ticket"
         case .chezNous: "house"
         }
     }
@@ -76,6 +76,7 @@ struct RacineView: View {
     @Environment(\.scenePhase) private var phase
     @State private var moi: String? = Base.moi
     @State private var onglet: Onglet = .accueil
+    @State private var genreIdees = "voyage"
     @State private var boniOuvert = false
 
     var body: some View {
@@ -122,6 +123,7 @@ struct RacineView: View {
         // Les widgets ouvrent l'app sur le bon onglet : willys://cuisine, willys://calendrier, willys://boni…
         .onOpenURL { url in
             if url.host == "boni" { boniOuvert = true }
+            else if url.host == "weekends" { genreIdees = "weekend"; onglet = .voyages }   // anciens liens
             else if let o = Onglet(rawValue: url.host ?? "") { onglet = o }
         }
     }
@@ -130,9 +132,9 @@ struct RacineView: View {
         switch o {
         case .accueil: AccueilView(moi: moi)
         case .calendrier: CalendrierView(moi: moi)
-        case .voyages: IdeesView(genre: "voyage", moi: moi)
+        case .voyages: VoyagesEtWeekends(moi: moi, genre: $genreIdees)
         case .cuisine: CuisineView(moi: moi)
-        case .weekends: IdeesView(genre: "weekend", moi: moi)
+        case .loisirs: LoisirsView(moi: moi)
         case .chezNous: ChezNousView(moi: moi) { self.moi = nil; Base.moi = nil }
         }
     }
