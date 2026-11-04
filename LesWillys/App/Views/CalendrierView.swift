@@ -6,6 +6,7 @@ import SwiftData
 struct CalendrierView: View {
     let moi: String
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.horizontalSizeClass) private var largeur
     @Query private var visites: [Visite]
     @Query(sort: \Evenement.debut) private var evenements: [Evenement]
     @State private var mois = Calendar.current.date(from: Calendar.current.dateComponents([.year, .month], from: .now))!
@@ -44,20 +45,43 @@ struct CalendrierView: View {
         .sheet(isPresented: $ajout) { NavigationStack { FormulaireEvenement(moi: moi, jour: jourChoisi) } }
     }
 
+    private var moisCourant: Date { cal.date(from: cal.dateComponents([.year, .month], from: .now))! }
+
+    private func changerMois(_ delta: Int) {
+        Retour.leger()
+        avecAnimation { mois = cal.date(byAdding: .month, value: delta, to: mois)! }
+    }
+
     private var entete: some View {
-        HStack {
-            Button { Retour.leger(); avecAnimation { mois = cal.date(byAdding: .month, value: -1, to: mois)! } } label: {
-                Image(systemName: "chevron.left").frame(width: 28, height: 28)
+        VStack(spacing: 8) {
+            HStack {
+                Button { changerMois(-1) } label: {
+                    Image(systemName: "chevron.left").frame(width: 44, height: 44)
+                }
+                .accessibilityLabel("Mois précédent")
+                Text(mois.formatted(.dateTime.month(.wide).year().locale(Locale(identifier: "fr_BE"))).capitalized)
+                    .font(Theme.titre(24)).frame(maxWidth: .infinity)
+                    .accessibilityAddTraits(.isHeader)
+                Button { changerMois(1) } label: {
+                    Image(systemName: "chevron.right").frame(width: 44, height: 44)
+                }
+                .accessibilityLabel("Mois suivant")
             }
-            .accessibilityLabel("Mois précédent")
-            Text(mois.formatted(.dateTime.month(.wide).year().locale(Locale(identifier: "fr_BE"))).capitalized)
-                .font(Theme.titre(24)).frame(maxWidth: .infinity)
-            Button { Retour.leger(); avecAnimation { mois = cal.date(byAdding: .month, value: 1, to: mois)! } } label: {
-                Image(systemName: "chevron.right").frame(width: 28, height: 28)
+            .buttonStyle(.bordered)
+            if !cal.isDate(mois, equalTo: .now, toGranularity: .month) || jourChoisi != Jour.aujourdhui {
+                Button("Revenir à aujourd'hui") {
+                    Retour.leger()
+                    avecAnimation { mois = moisCourant; jourChoisi = Jour.aujourdhui }
+                }
+                .font(.willys(.footnote, poids: .semibold))
+                .frame(minHeight: 44)
+                .transition(.opacity)
             }
-            .accessibilityLabel("Mois suivant")
         }
-        .buttonStyle(.bordered)
+        // glisser vers la gauche ou la droite change de mois
+        .gesture(DragGesture(minimumDistance: 30).onEnded { v in
+            if abs(v.translation.width) > abs(v.translation.height) * 1.5 { changerMois(v.translation.width < 0 ? 1 : -1) }
+        })
     }
 
     /// Les semaines du mois, du lundi au dimanche.
@@ -113,15 +137,22 @@ struct CalendrierView: View {
         return Button { Retour.selection(); avecAnimation { jourChoisi = j } } label: {
             VStack(alignment: .leading, spacing: 2) {
                 Text(d.formatted(.dateTime.day())).font(.willys(.caption, poids: .bold)).monospacedDigit()
-                ForEach(du.prefix(3)) { e in
-                    Text(e.titre).font(.willys(.caption2)).lineLimit(1).foregroundStyle(.white)
-                        .padding(.horizontal, 3).frame(maxWidth: .infinity, alignment: .leading)
-                        .background(e.typeEvenement.couleur, in: RoundedRectangle(cornerRadius: 3))
+                if largeur == .compact {
+                    // sur iPhone, des titres de 11 pt ne se lisent pas : des points de couleur, le détail est dessous
+                    HStack(spacing: 3) {
+                        ForEach(du.prefix(4)) { e in Circle().fill(e.typeEvenement.couleur).frame(width: 8, height: 8) }
+                    }
+                } else {
+                    ForEach(du.prefix(3)) { e in
+                        Text(e.titre).font(.willys(.caption2)).lineLimit(1).foregroundStyle(.white)
+                            .padding(.horizontal, 3).frame(maxWidth: .infinity, alignment: .leading)
+                            .background(e.typeEvenement.couleur, in: RoundedRectangle(cornerRadius: 3))
+                    }
                 }
                 Spacer(minLength: 0)
             }
             .padding(4)
-            .frame(maxWidth: .infinity, minHeight: 64, alignment: .topLeading)
+            .frame(maxWidth: .infinity, minHeight: largeur == .compact ? 52 : 64, alignment: .topLeading)
             .background(Theme.porte(scheme), in: RoundedRectangle(cornerRadius: 10))
             .overlay(RoundedRectangle(cornerRadius: 10)
                 .strokeBorder(j == Jour.aujourdhui ? Theme.accent : (j == jourChoisi ? .primary : .secondary.opacity(0.2)),

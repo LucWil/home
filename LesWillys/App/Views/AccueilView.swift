@@ -8,6 +8,7 @@ struct AccueilView: View {
     @Environment(\.modelContext) private var ctx
     @Environment(\.colorScheme) private var scheme
     @Environment(\.openURL) private var ouvrir
+    @Environment(\.horizontalSizeClass) private var largeur
     @Query(sort: \Evenement.debut) private var evenements: [Evenement]
     @Query(sort: \Idee.cree, order: .reverse) private var idees: [Idee]
     @Query(sort: \Recette.cree, order: .reverse) private var recettes: [Recette]
@@ -60,9 +61,14 @@ struct AccueilView: View {
         let jour = Int(Date.now.timeIntervalSince1970 / 86400)
         let photo = photos.isEmpty ? nil : photos[jour % photos.count]
         let prochain = evenements.first { $0.fin >= Jour.aujourdhui }
-        return HStack(alignment: .center, spacing: 18) {
+        let compact = largeur == .compact
+        // sur iPhone la photo passe au-dessus du texte : côte à côte, tout était à l'étroit
+        let disposition = compact ? AnyLayout(VStackLayout(alignment: .leading, spacing: 14))
+                                  : AnyLayout(HStackLayout(alignment: .center, spacing: 18))
+        return disposition {
             if let photo, let data = photo.image, let ui = UIImage(data: data) {
-                Image(uiImage: ui).resizable().scaledToFill().frame(width: 120, height: 120)
+                Image(uiImage: ui).resizable().scaledToFill()
+                    .frame(maxWidth: compact ? .infinity : 120).frame(height: compact ? 160 : 120)
                     .clipShape(RoundedRectangle(cornerRadius: 16))
                     .overlay(RoundedRectangle(cornerRadius: 16).stroke(.white, lineWidth: 5))
                     .rotationEffect(.degrees(-3)).shadow(radius: 6, y: 6)
@@ -77,9 +83,9 @@ struct AccueilView: View {
                 } else {
                     Text("Pas de rendez-vous prévu : à vous de lancer la prochaine idée !").font(.willys(.subheadline))
                 }
-                HStack {
-                    Button("Laisser un mot") { feuille = .mot }.buttonStyle(.borderedProminent)
-                    Button("Ajouter une photo") { feuille = .photo }.buttonStyle(.bordered)
+                ViewThatFits(in: .horizontal) {
+                    HStack { boutonsBanniere }
+                    VStack(alignment: .leading) { boutonsBanniere }
                 }
             }
         }
@@ -88,6 +94,11 @@ struct AccueilView: View {
         .background(LinearGradient(colors: [Theme.accent.opacity(0.3), Famille.membre("loulou")!.couleur.opacity(0.15)],
                                    startPoint: .topLeading, endPoint: .bottomTrailing),
                     in: RoundedRectangle(cornerRadius: 22))
+    }
+
+    @ViewBuilder private var boutonsBanniere: some View {
+        Button("Laisser un mot") { feuille = .mot }.buttonStyle(.borderedProminent)
+        Button("Ajouter une photo") { feuille = .photo }.buttonStyle(.bordered)
     }
 
     // MARK: Cette semaine
