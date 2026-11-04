@@ -60,6 +60,7 @@ final class SynchroFamille: ObservableObject {
             moteur.state.add(pendingDatabaseChanges: [.saveZone(CKRecordZone(zoneID: zoneID))])
         }
         etat = zoneID == nil ? .enAttenteInvitation : .pret
+        rattraperTachesMaison()
         envoyerFile()
         try? await moteur.fetchChanges()
     }
@@ -76,6 +77,16 @@ final class SynchroFamille: ObservableObject {
         if !changements.isEmpty { moteur.state.add(pendingRecordZoneChanges: changements) }
     }
 
+    /// Les tâches du week-end créées avant leur branchement sur iCloud restaient sur l'appareil :
+    /// on les envoie une fois, au premier lancement de cette version.
+    private func rattraperTachesMaison() {
+        let cle = "synchro.tachesMaison.v1"
+        guard !Base.reglages.bool(forKey: cle) else { return }
+        let taches = (try? Base.app.mainContext.fetch(FetchDescriptor<TacheMaison>())) ?? []
+        FileSynchro.ajouter(taches.map { "save:" + $0.nomEnregistrement })
+        Base.reglages.set(true, forKey: cle)
+    }
+
     /// Met tout le contenu local dans la file (après avoir rejoint la maison commune).
     func toutEnvoyer() {
         let ctx = Base.app.mainContext
@@ -87,6 +98,7 @@ final class SynchroFamille: ObservableObject {
         ajouter(Foyer.self); ajouter(Recette.self); ajouter(Photo.self); ajouter(Visite.self); ajouter(DocumentBrut.self)
         ajouter(Activite.self)
         ajouter(Restaurant.self); ajouter(Sortie.self); ajouter(Hotel.self); ajouter(PhotoLoisir.self)
+        ajouter(TacheMaison.self)
         FileSynchro.ajouter(lignes)
         envoyerFile()
     }
@@ -230,6 +242,7 @@ final class SynchroFamille: ObservableObject {
         case Sortie.typeEnregistrement: return chercher(Sortie.self)
         case Hotel.typeEnregistrement: return chercher(Hotel.self)
         case PhotoLoisir.typeEnregistrement: return chercher(PhotoLoisir.self)
+        case TacheMaison.typeEnregistrement: return chercher(TacheMaison.self)
         default: return nil
         }
     }
@@ -252,6 +265,7 @@ final class SynchroFamille: ObservableObject {
         case Sortie.typeEnregistrement: let s = Sortie(ref: "", nom: "", lieu: "", foyer: "", par: ""); s.cle = id; o = s
         case Hotel.typeEnregistrement: let h = Hotel(nom: "", ville: "", foyer: "", par: ""); h.cle = id; o = h
         case PhotoLoisir.typeEnregistrement: let p = PhotoLoisir(parent: "", quoi: "", image: nil, par: ""); p.cle = id; o = p
+        case TacheMaison.typeEnregistrement: let t = TacheMaison(titre: "", heures: 1, ordre: 0); t.cle = id; o = t
         case DocumentBrut.typeEnregistrement:
             let m = id.split(separator: ":", maxSplits: 1).map(String.init)
             o = DocumentBrut(collection: m.first ?? "", cle: m.count > 1 ? m[1] : id, json: Data(), foyer: "")

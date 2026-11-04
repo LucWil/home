@@ -1,5 +1,6 @@
 import Foundation
 import SwiftData
+import CloudKit
 
 /// Une chose à faire à la maison pendant le week-end : une tâche simple (heures données)
 /// ou une peinture (heures calculées d'après la surface). Reste sur l'appareil : c'est un carnet personnel.
@@ -147,4 +148,24 @@ func heuresTexte(_ h: Double) -> String {
     let m = Int((h * 60).rounded())
     let (hh, mm) = (m / 60, m % 60)
     return mm == 0 ? "\(hh) h" : hh == 0 ? "\(mm) min" : "\(hh) h \(mm)"
+}
+
+// MARK: - Synchronisation iCloud : les tâches du week-end sont partagées avec la famille
+
+extension TacheMaison: AvecCle {}
+
+extension TacheMaison: Synchronisable {
+    static let typeEnregistrement = "TacheMaison"
+    var idSynchro: String { cle }
+    var aPartager: Bool { true }
+    func remplir(_ r: CKRecord) {
+        r["titre"] = titre; r["genre"] = genre; r["heures"] = heures; r["surface"] = surface
+        r["surfacePlafond"] = surfacePlafond; r["couches"] = couches; r["sousCouche"] = sousCouche
+        r["ordre"] = ordre; r["fait"] = fait; r["cree"] = cree
+    }
+    func lire(_ r: CKRecord) {
+        titre = r.s("titre"); genre = r.s("genre"); heures = r.nombre("heures"); surface = r.nombre("surface")
+        surfacePlafond = r.nombre("surfacePlafond"); couches = r.entier("couches") ?? 2; sousCouche = r.vrai("sousCouche")
+        ordre = r.entier("ordre") ?? 0; fait = r.vrai("fait"); cree = r.date("cree")
+    }
 }
