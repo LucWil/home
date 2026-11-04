@@ -275,7 +275,7 @@ final class SynchroFamille: ObservableObject {
         return o
     }
 
-    static func fichier(_ nom: String) -> URL {
+    nonisolated static func fichier(_ nom: String) -> URL {
         let dossier = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: Base.groupe)
             ?? FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         return dossier.appendingPathComponent(nom)

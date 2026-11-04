@@ -112,8 +112,12 @@ struct FormulaireIdee: View {
     let moi: String
     @Environment(\.modelContext) private var ctx
     @Environment(\.dismiss) private var fermer
-    @State private var titre = "", quand = "", prix = "", lien = "", photo = "", note = ""
-
+    @State private var titre = ""
+    @State private var quand = ""
+    @State private var prix = ""
+    @State private var lien = ""
+    @State private var photo = ""
+    @State private var note = ""
     var body: some View {
         let voyage = genre == "voyage"
         Form {
@@ -145,7 +149,11 @@ struct FormulaireArticle: View {
     var rangement: Rangement = .frais
     @Environment(\.modelContext) private var ctx
     @Environment(\.dismiss) private var fermer
-    @State private var nom = "", quantite = "", categorie = "legumes", prix = "", bonJours = ""
+    @State private var nom = ""
+    @State private var quantite = ""
+    @State private var categorie = "legumes"
+    @State private var prix = ""
+    @State private var bonJours = ""
     @State private var depuis = Date.now
     @State private var peremption = Date.now.addingTimeInterval(30 * 86400)
     @State private var avecPeremption = false

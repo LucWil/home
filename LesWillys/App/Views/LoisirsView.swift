@@ -254,8 +254,15 @@ struct FormulaireRestaurant: View {
     let r: Restaurant?
     @Environment(\.modelContext) private var ctx
     @Environment(\.dismiss) private var fermer
-    @State private var nom = "", ville = "", adresse = "", tel = "", cuisine = "", site = "", reserver = "", menuLien = "", horaires = ""
-
+    @State private var nom = ""
+    @State private var ville = ""
+    @State private var adresse = ""
+    @State private var tel = ""
+    @State private var cuisine = ""
+    @State private var site = ""
+    @State private var reserver = ""
+    @State private var menuLien = ""
+    @State private var horaires = ""
     var body: some View {
         Form {
             Section {
@@ -591,7 +598,15 @@ struct FormulaireHotel: View {
     @Environment(\.dismiss) private var fermer
     @Environment(\.openURL) private var ouvrir
     @Query private var evenements: [Evenement]
-    @State private var nom = "", ville = "", prix = "", confirmation = "", lienResa = "", adresse = "", tel = "", site = "", note = ""
+    @State private var nom = ""
+    @State private var ville = ""
+    @State private var prix = ""
+    @State private var confirmation = ""
+    @State private var lienResa = ""
+    @State private var adresse = ""
+    @State private var tel = ""
+    @State private var site = ""
+    @State private var note = ""
     @State private var arrivee = Date.now
     @State private var depart = Date.now.addingTimeInterval(86400)
     @State private var personnes = 2
