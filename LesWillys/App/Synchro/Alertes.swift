@@ -110,7 +110,8 @@ struct CarteNotifications: View {
     @AppStorage("carteNotifications.plusTard") private var plusTard = false
 
     var body: some View {
-        Group {
+        // Un VStack (et pas un Group) : vide, il existe quand même et sa `.task` s'exécute.
+        VStack(spacing: 0) {
             if statut == .notDetermined && !plusTard {
                 Porte(teinte: Theme.accent) {
                     HStack(alignment: .top, spacing: 12) {

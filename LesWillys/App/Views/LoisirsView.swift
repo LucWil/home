@@ -14,6 +14,8 @@ struct LoisirsView: View {
     enum Partie: String, CaseIterable, Identifiable {
         case voyages = "Voyages", weekends = "Week-ends", restaurants = "Restos", hotels = "Hôtels", budget = "Budget"
         var id: String { rawValue }
+        /// Le libellé du sélecteur : cinq segments sur un iPhone, « Week-ends » serait coupé.
+        var court: String { self == .weekends ? "W-E" : rawValue }
         /// Les liens willys://voyages, willys://weekends, willys://restaurants…
         init?(cle: String) {
             switch cle {
@@ -49,7 +51,7 @@ struct LoisirsView: View {
             }
         }
         .safeAreaInset(edge: .top, spacing: 0) {
-            Picker("Partie des loisirs", selection: $partie) { ForEach(Partie.allCases) { Text($0.rawValue).tag($0) } }
+            Picker("Partie des loisirs", selection: $partie) { ForEach(Partie.allCases) { Text($0.court).accessibilityLabel($0.rawValue).tag($0) } }
                 .pickerStyle(.segmented)
                 .padding(.horizontal, 16).padding(.vertical, 8)
                 .background(.bar)
