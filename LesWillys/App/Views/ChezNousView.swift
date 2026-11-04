@@ -20,6 +20,12 @@ struct ChezNousView: View {
 
     var body: some View {
         List {
+            Section {
+                NavigationLink { WeekendMaisonView() } label: {
+                    Label("Week-end à la maison · 8 h + 4 h", systemImage: "hammer")
+                }
+            } footer: { Text("Planifie tes tâches et tes peintures : l'écran dit quand chacune sera finie.") }
+
             partage
 
             Section("Le jardin") {

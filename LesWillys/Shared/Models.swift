@@ -192,7 +192,7 @@ extension DocumentBrut: AvecCle {}
 enum Schema_ {
     static let modeles: [any PersistentModel.Type] = [
         Evenement.self, Idee.self, Reaction.self, Article.self, Boni.self, Foyer.self,
-        Recette.self, Photo.self, Visite.self, DocumentBrut.self, Activite.self,
+        Recette.self, Photo.self, Visite.self, DocumentBrut.self, Activite.self, TacheMaison.self,
     ]
 }
 
