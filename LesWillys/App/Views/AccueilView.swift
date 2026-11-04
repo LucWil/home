@@ -26,6 +26,7 @@ struct AccueilView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {
                 banniere
+                CarteNotifications()
                 ViewThatFits(in: .horizontal) {
                     HStack(alignment: .top, spacing: 16) { semaine; VStack(spacing: 16) { nouveau; passages } }
                     VStack(spacing: 16) { semaine; nouveau; passages }

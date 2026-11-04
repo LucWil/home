@@ -20,7 +20,7 @@ struct IdeesView: View {
 
     var body: some View {
         ScrollView {
-            IciAussi(onglet: "voyages", moi: moi, visites: visites)
+            IciAussi(onglet: "loisirs", moi: moi, visites: visites)
                 .frame(maxWidth: .infinity, alignment: .leading).padding([.horizontal, .top], 16)
             if idees.isEmpty {
                 ContentUnavailableView {
@@ -43,25 +43,6 @@ struct IdeesView: View {
         .navigationTitle(genre == "voyage" ? "Voyages" : "Week-ends")
         .toolbar { Button { ajout = true } label: { Label("Proposer", systemImage: "plus") } }
         .sheet(isPresented: $ajout) { NavigationStack { FormulaireIdee(genre: genre, moi: moi) } }
-    }
-}
-
-/// Voyages et week-ends partagent un onglet (le sixième est devenu Loisirs) : un choix en haut.
-struct VoyagesEtWeekends: View {
-    let moi: String
-    @Binding var genre: String
-    var body: some View {
-        IdeesView(genre: genre, moi: moi)
-            .id(genre)
-            .safeAreaInset(edge: .top) {
-                Picker("", selection: $genre) {
-                    Label("Voyages", systemImage: "airplane").tag("voyage")
-                    Label("Week-ends", systemImage: "sun.max").tag("weekend")
-                }
-                .pickerStyle(.segmented).padding(.horizontal, 16).padding(.vertical, 8)
-                .background(.bar)
-                .sensoryFeedback(.selection, trigger: genre)
-            }
     }
 }
 

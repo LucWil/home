@@ -5,32 +5,56 @@ import PhotosUI
 /// L'onglet Loisirs : ce qu'on fait ensemble, dehors. Restaurants, hôtels et le budget des sorties.
 struct LoisirsView: View {
     let moi: String
+    @Binding var partie: Partie
     @Environment(\.colorScheme) private var scheme
     @Query private var visites: [Visite]
-    @State private var partie: Partie = .restaurants
 
+    /// Tout ce qu'on fait ensemble dehors : les idées de voyages et de week-ends, les restaurants,
+    /// les hôtels et le budget des sorties (un iPhone n'affiche bien que cinq onglets).
     enum Partie: String, CaseIterable, Identifiable {
-        case restaurants = "Restaurants", hotels = "Hôtels", budget = "Le budget"
+        case voyages = "Voyages", weekends = "Week-ends", restaurants = "Restos", hotels = "Hôtels", budget = "Budget"
         var id: String { rawValue }
+        /// Les liens willys://voyages, willys://weekends, willys://restaurants…
+        init?(cle: String) {
+            switch cle {
+            case "voyages", "voyage": self = .voyages
+            case "weekends", "weekend": self = .weekends
+            case "restaurants", "restos": self = .restaurants
+            case "hotels": self = .hotels
+            case "budget": self = .budget
+            default: return nil
+            }
+        }
     }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                IciAussi(onglet: "loisirs", moi: moi, visites: visites)
-                Picker("", selection: $partie) { ForEach(Partie.allCases) { Text($0.rawValue).tag($0) } }
-                    .pickerStyle(.segmented)
-                    .sensoryFeedback(.selection, trigger: partie)
-                switch partie {
-                case .restaurants: RestaurantsListe(moi: moi)
-                case .hotels: HotelsListe(moi: moi)
-                case .budget: BudgetLoisirs(moi: moi)
+        Group {
+            switch partie {
+            case .voyages: IdeesView(genre: "voyage", moi: moi).id("voyage")
+            case .weekends: IdeesView(genre: "weekend", moi: moi).id("weekend")
+            default:
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 16) {
+                        IciAussi(onglet: "loisirs", moi: moi, visites: visites)
+                        switch partie {
+                        case .hotels: HotelsListe(moi: moi)
+                        case .budget: BudgetLoisirs(moi: moi)
+                        default: RestaurantsListe(moi: moi)
+                        }
+                    }
+                    .padding(16)
                 }
+                .background(Theme.emaille(scheme))
+                .navigationTitle("Loisirs")
             }
-            .padding(16)
         }
-        .background(Theme.emaille(scheme))
-        .navigationTitle("Loisirs")
+        .safeAreaInset(edge: .top, spacing: 0) {
+            Picker("Partie des loisirs", selection: $partie) { ForEach(Partie.allCases) { Text($0.rawValue).tag($0) } }
+                .pickerStyle(.segmented)
+                .padding(.horizontal, 16).padding(.vertical, 8)
+                .background(.bar)
+                .sensoryFeedback(.selection, trigger: partie)
+        }
     }
 }
 

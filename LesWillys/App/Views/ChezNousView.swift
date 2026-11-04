@@ -120,7 +120,7 @@ extension ChezNousView {
                     Label("Inviter la famille", systemImage: "person.badge.plus")
                 }
             }
-            Toggle(isOn: Binding(get: { alertes }, set: { alertes = $0; Alertes.actives = $0 })) {
+            Toggle(isOn: Binding(get: { alertes }, set: { alertes = $0; Alertes.actives = $0; if $0 { Task { await Alertes.demanderAutorisation() } } })) {
                 Label("Me prévenir quand quelqu'un range, mange ou prévoit quelque chose", systemImage: "bell.badge")
             }
             .tint(Theme.ok)

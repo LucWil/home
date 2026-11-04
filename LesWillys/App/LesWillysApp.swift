@@ -2,6 +2,7 @@ import SwiftUI
 import SwiftData
 import CloudKit
 import UIKit
+import UserNotifications
 
 @main
 struct LesWillysApp: App {
@@ -26,6 +27,7 @@ struct LesWillysApp: App {
 final class AppDelegate: NSObject, UIApplicationDelegate {
     func application(_ application: UIApplication, didFinishLaunchingWithOptions options: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
         application.registerForRemoteNotifications()
+        UNUserNotificationCenter.current().delegate = Alertes.partagee   // toucher une notification ouvre le bon onglet
         Theme.appliquerAuxBarres()
         return true
     }
@@ -46,13 +48,12 @@ final class SceneDelegate: NSObject, UIWindowSceneDelegate {
 
 /// Les six onglets, comme dans l'app web.
 enum Onglet: String, CaseIterable, Identifiable {
-    case accueil, calendrier, voyages, cuisine, loisirs, chezNous = "chez-nous"
+    case accueil, calendrier, cuisine, loisirs, chezNous = "chez-nous"
     var id: String { rawValue }
     var titre: String {
         switch self {
         case .accueil: "La famille"
         case .calendrier: "Calendrier"
-        case .voyages: "Voyages"
         case .cuisine: "Cuisine"
         case .loisirs: "Loisirs"
         case .chezNous: "Chez nous"
@@ -62,7 +63,6 @@ enum Onglet: String, CaseIterable, Identifiable {
         switch self {
         case .accueil: "heart"
         case .calendrier: "calendar"
-        case .voyages: "airplane"
         case .cuisine: "frying.pan"
         case .loisirs: "ticket"
         case .chezNous: "house"
@@ -80,7 +80,7 @@ struct RacineView: View {
     /// Pour les captures d'écran automatiques (simulateur, GitHub) : `-demoMoi loulou -demoOnglet loisirs`
     /// au lancement choisit le membre et l'onglet. Sans effet dans l'usage normal.
     static func demo(_ cle: String) -> String? { UserDefaults.standard.string(forKey: cle) }
-    @State private var genreIdees = "voyage"
+    @State private var partieLoisirs: LoisirsView.Partie = RacineView.demo("demoLoisirs").flatMap(LoisirsView.Partie.init(cle:)) ?? .voyages
     @State private var boniOuvert = false
 
     var body: some View {
@@ -101,7 +101,6 @@ struct RacineView: View {
                 .task(id: moi) {
                     noterVisite(moi)
                     await SynchroFamille.partagee.demarrer()
-                    await Alertes.demanderAutorisation()
                     // Tant que l'app est ouverte, on redit « je suis là » toutes les minutes.
                     while !Task.isCancelled {
                         try? await Task.sleep(for: .seconds(60))
@@ -127,7 +126,8 @@ struct RacineView: View {
         // Les widgets ouvrent l'app sur le bon onglet : willys://cuisine, willys://calendrier, willys://boni…
         .onOpenURL { url in
             if url.host == "boni" { boniOuvert = true }
-            else if url.host == "weekends" { genreIdees = "weekend"; onglet = .voyages }   // anciens liens
+            // Voyages et week-ends vivent maintenant dans Loisirs (liens du fil, des widgets, des notifications)
+            else if let p = LoisirsView.Partie(cle: url.host ?? "") { partieLoisirs = p; onglet = .loisirs }
             else if let o = Onglet(rawValue: url.host ?? "") { onglet = o }
         }
     }
@@ -136,9 +136,8 @@ struct RacineView: View {
         switch o {
         case .accueil: AccueilView(moi: moi)
         case .calendrier: CalendrierView(moi: moi)
-        case .voyages: VoyagesEtWeekends(moi: moi, genre: $genreIdees)
         case .cuisine: CuisineView(moi: moi)
-        case .loisirs: LoisirsView(moi: moi)
+        case .loisirs: LoisirsView(moi: moi, partie: $partieLoisirs)
         case .chezNous: ChezNousView(moi: moi) { self.moi = nil; Base.moi = nil }
         }
     }

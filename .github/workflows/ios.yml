@@ -62,10 +62,15 @@ jobs:
           sleep 12; kill %1 2>/dev/null || true
           xcrun simctl launch "$DEV" be.willys.app || true; sleep 6
           xcrun simctl io "$DEV" screenshot captures/0-qui-rentre.png
-          for o in accueil calendrier voyages cuisine loisirs chez-nous; do
+          for o in accueil calendrier cuisine loisirs chez-nous; do
             xcrun simctl terminate "$DEV" be.willys.app || true
             xcrun simctl launch "$DEV" be.willys.app -demoMoi loulou -demoOnglet "$o"; sleep 6
             xcrun simctl io "$DEV" screenshot "captures/$o.png"
+          done
+          for p in restaurants hotels budget; do
+            xcrun simctl terminate "$DEV" be.willys.app || true
+            xcrun simctl launch "$DEV" be.willys.app -demoMoi loulou -demoOnglet loisirs -demoLoisirs "$p"; sleep 6
+            xcrun simctl io "$DEV" screenshot "captures/loisirs-$p.png"
           done
           xcrun simctl ui "$DEV" appearance dark
           xcrun simctl terminate "$DEV" be.willys.app || true
