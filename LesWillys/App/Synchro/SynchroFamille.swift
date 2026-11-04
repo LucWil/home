@@ -26,7 +26,12 @@ final class SynchroFamille: ObservableObject {
     @Published private(set) var derniereSynchro: Date?
 
     static let nomZone = "Willys"
-    let conteneur = CKContainer(identifier: Base.iCloud)
+    /// Créé seulement quand l'app a vraiment accès à iCloud : sans signature (simulateur, compilation
+    /// GitHub), ouvrir le conteneur fait planter l'app au lancement.
+    lazy var conteneur = CKContainer(identifier: Base.iCloud)
+    static var iCloudDisponible: Bool {
+        FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: Base.groupe) != nil
+    }
     private var moteur: CKSyncEngine?
     private var delegue: Delegue?
 
@@ -46,6 +51,7 @@ final class SynchroFamille: ObservableObject {
 
     func demarrer() async {
         guard moteur == nil, Base.moi != nil else { return }
+        guard Self.iCloudDisponible else { etat = .pasDeCompteICloud; return }
         guard (try? await conteneur.accountStatus()) == .available else { etat = .pasDeCompteICloud; return }
 
         let base = estProprietaire ? conteneur.privateCloudDatabase : conteneur.sharedCloudDatabase

@@ -57,7 +57,10 @@ jobs:
           xcrun simctl status_bar "$DEV" override --time 9:41 --batteryState charged --batteryLevel 100 || true
           xcrun simctl install "$DEV" "$APP"
           mkdir -p captures
-          xcrun simctl launch "$DEV" be.willys.app; sleep 8
+          # Premier lancement : on garde ce que l'app écrit, pour comprendre un éventuel plantage
+          xcrun simctl launch --console-pty "$DEV" be.willys.app > captures/console.txt 2>&1 &
+          sleep 12; kill %1 2>/dev/null || true
+          xcrun simctl launch "$DEV" be.willys.app || true; sleep 6
           xcrun simctl io "$DEV" screenshot captures/0-qui-rentre.png
           for o in accueil calendrier voyages cuisine loisirs chez-nous; do
             xcrun simctl terminate "$DEV" be.willys.app || true
