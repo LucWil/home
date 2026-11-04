@@ -97,6 +97,33 @@ enum Categorie {
         default: toutes.map(\.id)
         }
     }
+    /// Les mots qui trahissent une catégorie (sans accents, au singulier).
+    private static let motsCles: [String: [String]] = [
+        "pains": ["pate", "spaghetti", "tagliatelle", "macaroni", "penne", "fusilli", "nouille", "pain", "biscotte", "wrap", "tortilla", "baguette"],
+        "epicerie": ["riz", "farine", "sucre", "sel", "huile", "vinaigre", "semoule", "quinoa", "lentille", "couscous", "levure", "chocolat", "biscuit", "sauce", "ketchup", "mayonnaise", "moutarde", "miel", "bouillon", "chips"],
+        "conserves": ["conserve", "thon", "sardine", "maquereau", "concentre", "mais", "boite", "bocal", "cornichon", "olive", "soupe", "pele", "pelee"],
+        "petitdej": ["cereale", "muesli", "confiture", "tartiner", "nutella", "cafe", "the", "cacao", "flocon", "avoine", "granola", "speculoos"],
+        "boissons": ["eau", "jus", "soda", "coca", "biere", "vin", "sirop", "limonade", "lait", "cola", "tonic"],
+        "epices": ["epice", "poivre", "paprika", "cumin", "curcuma", "cannelle", "thym", "origan", "basilic", "curry", "muscade", "piment", "herbe", "laurier", "persil"],
+        "legumes": ["terre", "carotte", "poireau", "oignon", "courgette", "salade", "chou", "tomate", "aubergine", "poivron", "champignon", "epinard", "radis", "ail", "haricot", "concombre", "courge", "chicon", "celeri", "legume"],
+        "fruits": ["pomme", "poire", "banane", "orange", "citron", "fraise", "framboise", "cerise", "raisin", "kiwi", "clementine", "ananas", "fruit", "prune", "peche"],
+        "cremerie": ["lait", "yaourt", "fromage", "beurre", "creme", "oeuf", "mozzarella", "gruyere", "skyr", "raclette"],
+        "viandes": ["poulet", "boeuf", "porc", "jambon", "saucisse", "hache", "lardon", "steak", "veau", "dinde", "agneau", "viande", "saucisson"],
+        "poissons": ["saumon", "cabillaud", "poisson", "crevette", "colin", "truite", "moule"],
+        "plats": ["lasagne", "pizza", "quiche", "plat", "croquette", "gratin", "nugget", "ravioli"],
+    ]
+
+    /// La catégorie la plus probable d'après le nom, parmi celles qui existent à cet endroit (nil si rien ne ressemble).
+    static func deviner(nom: String, dans rangement: String) -> String? {
+        let propre = nom.folding(options: [.diacriticInsensitive, .caseInsensitive], locale: Locale(identifier: "fr_BE")).lowercased()
+        let mots = propre.split { !$0.isLetter }.map(String.init)
+        for id in attendues(dans: rangement) where id != "autre" {
+            for k in motsCles[id] ?? [] where mots.contains(where: { $0 == k || $0 == k + "s" || (k.count >= 5 && $0.hasPrefix(k)) }) {
+                return id
+            }
+        }
+        return nil
+    }
     static func nom(_ id: String) -> String { toutes.first { $0.id == id }?.nom ?? "Autre" }
     static func couleur(_ id: String) -> Color {
         switch id {

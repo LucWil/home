@@ -15,6 +15,7 @@ struct CuisineView: View {
     @State private var thermomix: Recette?
     @State private var boni = false
     @State private var recherche = ""
+    @State private var aReclasser: Rangement?
     @State private var fermees: Set<String> = []     // les catégories repliées (toutes ouvertes au départ)
 
     enum Partie: String, CaseIterable, Identifiable {
@@ -52,6 +53,9 @@ struct CuisineView: View {
         }
         .sheet(item: $ajout) { r in NavigationStack { FormulaireArticle(moi: moi, foyer: foyer, rangement: r) } }
         .sheet(isPresented: $boni) { NavigationStack { BoniView(moi: moi) } }
+        .sheet(item: $aReclasser) { r in
+            NavigationStack { ReclasserView(articles: monStock.filter { $0.rangement == r.rawValue }, rangement: r) }
+        }
         .fullScreenCover(item: $thermomix) { ModeThermomix(recette: $0) }
     }
 
@@ -118,6 +122,15 @@ struct CuisineView: View {
                 if articles.isEmpty { Text("Vide pour l'instant.").foregroundStyle(.secondary) }
                 Button("Ranger quelque chose") { ajout = r }.buttonStyle(.bordered).frame(minHeight: 44)
             }
+            let propositions = articles.filter { propositionPour($0, r) != nil }.count
+            if propositions > 0 {
+                Porte(teinte: Theme.accent) {
+                    Text("\(propositions) article\(propositions > 1 ? "s" : "") à reclasser").font(.willys(.headline))
+                    Text("D'après leur nom, ils iraient mieux dans une autre catégorie. Tu vérifies, puis tu appliques d'un coup.")
+                        .font(.willys(.footnote)).foregroundStyle(.secondary)
+                    Button("Voir les propositions") { aReclasser = r }.buttonStyle(.borderedProminent).frame(minHeight: 44)
+                }
+            }
             ForEach(remplis, id: \.id) { g in
                 let urgents = g.items.filter { ($0.joursRestants ?? 99) <= (r == .armoire ? 14 : 1) }.count
                 Porte {
@@ -158,6 +171,11 @@ struct CuisineView: View {
                 }
             }
         }
+    }
+
+    /// La catégorie proposée pour un article rangé dans « Autre » ou dans une catégorie qui n'existe pas à cet endroit.
+    private func propositionPour(_ a: Article, _ r: Rangement) -> String? {
+        ReclasserView.proposition(a, r)
     }
 
     /// Le surgélateur dessiné, tiroir par tiroir.
@@ -378,6 +396,58 @@ struct FlowLayout: Layout {
             if x + t.width > b.maxX, x > b.minX { x = b.minX; y += ligne + spacing; ligne = 0 }
             s.place(at: CGPoint(x: x, y: y), proposal: ProposedViewSize(t))
             x += t.width + spacing; ligne = max(ligne, t.height)
+        }
+    }
+}
+
+
+/// Reclasser d'un coup les articles mal rangés : une proposition par article, qu'on peut corriger avant d'appliquer.
+struct ReclasserView: View {
+    let articles: [Article]
+    let rangement: Rangement
+    @Environment(\.modelContext) private var ctx
+    @Environment(\.dismiss) private var fermer
+    @State private var choix: [String: String] = [:]     // cle de l'article → catégorie choisie
+
+    static func proposition(_ a: Article, _ r: Rangement) -> String? {
+        let attendues = Categorie.attendues(dans: r.rawValue)
+        let mal = a.categorie == "autre" || !attendues.contains(a.categorie)
+        guard mal, let g = Categorie.deviner(nom: a.nom, dans: r.rawValue), g != a.categorie else { return nil }
+        return g
+    }
+
+    private var concernes: [Article] { articles.filter { Self.proposition($0, rangement) != nil } }
+
+    var body: some View {
+        Form {
+            Section {
+                ForEach(concernes) { a in
+                    Picker(selection: Binding(
+                        get: { choix[a.cle] ?? Self.proposition(a, rangement) ?? a.categorie },
+                        set: { choix[a.cle] = $0 })) {
+                        ForEach(Categorie.attendues(dans: rangement.rawValue), id: \.self) { Text(Categorie.nom($0)).tag($0) }
+                    } label: {
+                        VStack(alignment: .leading) {
+                            Text(a.nom).bold()
+                            Text("Actuellement : \(Categorie.nom(a.categorie))").font(.willys(.caption)).foregroundStyle(.secondary)
+                        }
+                    }
+                }
+            } footer: { Text("Les propositions viennent du nom de l'article. Change celle qui ne va pas.") }
+        }
+        .navigationTitle("Reclasser")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .cancellationAction) { Button("Fermer") { fermer() } }
+            ToolbarItem(placement: .confirmationAction) {
+                Button("Appliquer") {
+                    for a in concernes {
+                        let c = choix[a.cle] ?? Self.proposition(a, rangement) ?? a.categorie
+                        a.categorie = c
+                    }
+                    ctx.enregistrer(); Retour.succes(); Base.rafraichirWidgets(); fermer()
+                }
+            }
         }
     }
 }
