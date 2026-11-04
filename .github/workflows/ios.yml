@@ -7,6 +7,9 @@ on:
     paths: ["LesWillys/**", ".github/workflows/ios.yml"]
   workflow_dispatch:
 
+permissions:
+  contents: write   # pour publier les captures sur la branche « captures-ios »
+
 concurrency:
   group: ios-${{ github.ref }}
   cancel-in-progress: true
@@ -65,6 +68,15 @@ jobs:
           xcrun simctl terminate "$DEV" be.willys.app || true
           xcrun simctl launch "$DEV" be.willys.app -demoMoi loulou -demoOnglet accueil; sleep 6
           xcrun simctl io "$DEV" screenshot captures/accueil-sombre.png
+
+      - name: Publier les captures sur la branche « captures-ios »
+        run: |
+          mkdir -p /tmp/cap && for f in captures/*.png; do sips -s format jpeg -s formatOptions 72 -Z 1400 "$f" --out "/tmp/cap/$(basename "${f%.png}").jpg" >/dev/null; done
+          cd /tmp/cap
+          echo "Captures de l'app iPhone — commit ${GITHUB_SHA::7}, $(date -u '+%Y-%m-%d %H:%M UTC')" > LISEZMOI.txt
+          git init -q -b captures-ios && git add . \
+            && git -c user.name="github-actions" -c user.email="github-actions@users.noreply.github.com" commit -qm "Captures ${GITHUB_SHA::7}" \
+            && git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" captures-ios
 
       - name: Garder les captures et le journal
         if: always()
