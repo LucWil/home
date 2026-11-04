@@ -20,15 +20,21 @@ struct ChezNousView: View {
 
     var body: some View {
         List {
+            partage
+
             Section("Le jardin") {
                 let recoltes = de("harvest")
                 let grammes = recoltes.reduce(0.0) { $0 + $1.nombre("g") }
                 let valeur = recoltes.reduce(0.0) { $0 + $1.nombre("g") / 1000 * $1.nombre("pricekg") }
                 let heures = de("work").reduce(0.0) { $0 + $1.nombre("h") }
-                HStack {
-                    Stat(valeur: String(format: "%.1f kg", grammes / 1000), libelle: "récoltés")
-                    Stat(valeur: valeur.euros, libelle: "économisés")
-                    Stat(valeur: String(format: "%.0f h", heures), libelle: "au jardin")
+                // trois chiffres côte à côte, ou l'un sous l'autre quand le texte est agrandi
+                ViewThatFits(in: .horizontal) {
+                    HStack { statsJardin(grammes, valeur, heures) }
+                    VStack(alignment: .leading, spacing: 10) { statsJardin(grammes, valeur, heures) }
+                }
+                if recoltes.isEmpty && de("garden").isEmpty {
+                    ContentUnavailableView("Le potager attend", systemImage: "leaf",
+                        description: Text("Les récoltes et les heures passées au jardin, reprises de l'app web, apparaîtront ici."))
                 }
                 ForEach(Array(recoltes.prefix(15).enumerated()), id: \.offset) { _, r in
                     HStack {
@@ -42,8 +48,6 @@ struct ChezNousView: View {
                     HStack { Image(systemName: "leaf"); Text(g.s("name", g.s("nom"))); Spacer(); Text(g.s("date")).font(.willys(.caption)).foregroundStyle(.secondary) }
                 }
             }
-
-            partage
 
             Section {
                 Button { importer = true } label: { Label("Reprendre une sauvegarde de l'app web", systemImage: "square.and.arrow.down") }
@@ -78,6 +82,12 @@ struct ChezNousView: View {
 }
 
 extension ChezNousView {
+    @ViewBuilder fileprivate func statsJardin(_ grammes: Double, _ valeur: Double, _ heures: Double) -> some View {
+        Stat(valeur: String(format: "%.1f kg", grammes / 1000), libelle: "récoltés")
+        Stat(valeur: valeur.euros, libelle: "économisés")
+        Stat(valeur: String(format: "%.0f h", heures), libelle: "au jardin")
+    }
+
     /// La maison commune iCloud : Chouchou invite, les autres acceptent le lien une seule fois.
     @ViewBuilder var partage: some View {
         Section {
@@ -128,5 +138,6 @@ struct Stat: View {
             Text(libelle).font(.willys(.caption)).foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
     }
 }

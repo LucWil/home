@@ -30,8 +30,7 @@ struct CuisineView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 IciAussi(onglet: "cuisine", moi: moi, visites: visites)
-                Picker("", selection: $partie) { ForEach(Partie.allCases) { Text($0.rawValue).tag($0) } }
-                    .pickerStyle(.segmented)
+                barreParties
                 switch partie {
                 case .aManger: aManger
                 case .frais: liste(.frais)
@@ -53,6 +52,32 @@ struct CuisineView: View {
         .sheet(item: $ajout) { r in NavigationStack { FormulaireArticle(moi: moi, foyer: foyer, rangement: r) } }
         .sheet(isPresented: $boni) { NavigationStack { BoniView(moi: moi) } }
         .fullScreenCover(item: $thermomix) { ModeThermomix(recette: $0) }
+    }
+
+    /// Les cinq parties de la cuisine, en pastilles qu'on fait défiler (cinq segments tenaient mal sur iPhone).
+    private var barreParties: some View {
+        ScrollViewReader { lecteur in
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(Partie.allCases) { p in
+                        Button {
+                            Retour.selection(); avecAnimation { partie = p }
+                        } label: {
+                            Text(p.rawValue).font(.willys(.subheadline, poids: .bold))
+                                .padding(.horizontal, 16).frame(minHeight: 44)
+                                .background(partie == p ? Theme.accent : Theme.porte(scheme), in: Capsule())
+                                .foregroundStyle(partie == p ? Color.black.opacity(0.85) : Color.primary)
+                                .overlay(Capsule().strokeBorder(.primary.opacity(partie == p ? 0 : 0.1)))
+                        }
+                        .buttonStyle(StyleAimant())
+                        .id(p)
+                        .accessibilityAddTraits(partie == p ? .isSelected : [])
+                    }
+                }
+                .padding(.vertical, 2)
+            }
+            .onChange(of: partie) { _, p in withAnimation(Anim.douce) { lecteur.scrollTo(p, anchor: .center) } }
+        }
     }
 
     // MARK: À manger cette semaine
@@ -157,6 +182,7 @@ struct LigneArticle: View {
     let article: Article
     let moi: String
     @Environment(\.modelContext) private var ctx
+    @Environment(\.horizontalSizeClass) private var largeur
 
     var body: some View {
         HStack(spacing: 10) {
@@ -167,7 +193,7 @@ struct LigneArticle: View {
             }
             Spacer()
             // l'aimant de qui l'a rangé : plein s'il vient d'arriver, estompé sinon
-            Aimant(membre: article.par, taille: 22).opacity(nouveau ? 1 : 0.55)
+            if largeur != .compact || nouveau { Aimant(membre: article.par, taille: 22).opacity(nouveau ? 1 : 0.55) }
             Button("Mangé", systemImage: "checkmark") {
                 Retour.succes()
                 avecAnimation { Cuisine.manger(article, par: moi, dans: ctx) }
@@ -175,6 +201,8 @@ struct LigneArticle: View {
             }
             .buttonStyle(.borderedProminent).buttonBorderShape(.capsule).tint(Theme.ok)
             .font(.willys(.footnote, poids: .bold))
+            .labelStyle(.titleAndIcon)
+            .frame(minHeight: 44)
             .accessibilityHint("Retire \(article.nom) du stock et ajoute son prix au boni")
             Menu {
                 Button("Jeté", role: .destructive) { jeter() }
