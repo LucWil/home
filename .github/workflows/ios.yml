@@ -75,6 +75,8 @@ jobs:
       - name: Publier les captures sur la branche « captures-ios »
         run: |
           mkdir -p /tmp/cap && for f in captures/*.png; do sips -s format jpeg -s formatOptions 72 -Z 1400 "$f" --out "/tmp/cap/$(basename "${f%.png}").jpg" >/dev/null; done
+          cp captures/console.txt /tmp/cap/ 2>/dev/null || true
+          find ~/Library/Logs/DiagnosticReports -name "LesWillys*" -newer build.log -exec cp {} /tmp/cap/ \; 2>/dev/null || true
           cd /tmp/cap
           echo "Captures de l'app iPhone — commit ${GITHUB_SHA::7}, $(date -u '+%Y-%m-%d %H:%M UTC')" > LISEZMOI.txt
           git init -q -b captures-ios && git add . \
