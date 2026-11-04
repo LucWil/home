@@ -22,7 +22,10 @@ enum Base {
     static func conteneur() -> ModelContainer {
         let schema = Schema(Schema_.modeles)
         let config = ModelConfiguration("LesWillys", schema: schema, groupContainer: .identifier(groupe), cloudKitDatabase: .none)
-        return try! ModelContainer(for: schema, configurations: [config])
+        if let c = try? ModelContainer(for: schema, configurations: [config]) { return c }
+        // Sans App Group (compilation non signée, simulateur) : base locale à l'app seule.
+        let local = ModelConfiguration("LesWillys", schema: schema, groupContainer: .none, cloudKitDatabase: .none)
+        return try! ModelContainer(for: schema, configurations: [local])
     }
 
     @MainActor static let app = conteneur()

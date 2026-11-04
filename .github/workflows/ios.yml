@@ -1,0 +1,77 @@
+# Compile l'app iPhone « Les Willys » sur un Mac de GitHub, à chaque envoi de code,
+# puis prend des captures d'écran dans le simulateur (téléchargeables dans « Artifacts »).
+name: App iPhone
+
+on:
+  push:
+    paths: ["LesWillys/**", ".github/workflows/ios.yml"]
+  workflow_dispatch:
+
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  compiler:
+    runs-on: macos-15
+    timeout-minutes: 40
+    defaults:
+      run:
+        working-directory: LesWillys
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Version de Xcode
+        run: |
+          sudo xcode-select -s "$(ls -d /Applications/Xcode_16*.app | sort -V | tail -1)"
+          xcodebuild -version
+
+      - name: Générer le projet (XcodeGen)
+        run: |
+          brew install xcodegen
+          xcodegen generate
+
+      - name: Compiler pour le simulateur
+        run: |
+          set -o pipefail
+          xcodebuild build \
+            -project LesWillys.xcodeproj -scheme LesWillys \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
+            2>&1 | tee build.log | grep -E "error:|warning: .*(deprecated|will never)|BUILD (SUCCEEDED|FAILED)" || true
+          grep -q "BUILD SUCCEEDED" build.log
+
+      - name: Erreurs de compilation (résumé)
+        if: failure()
+        run: grep -E "error:" build.log | sort -u | head -80 || true
+
+      - name: Captures d'écran dans le simulateur
+        run: |
+          APP=build/Build/Products/Debug-iphonesimulator/LesWillys.app
+          DEV=$(xcrun simctl list devices available | grep -E "iPhone 16 Pro \(" | head -1 | grep -oE "[0-9A-F-]{36}")
+          xcrun simctl boot "$DEV"; xcrun simctl bootstatus "$DEV" -b
+          xcrun simctl status_bar "$DEV" override --time 9:41 --batteryState charged --batteryLevel 100 || true
+          xcrun simctl install "$DEV" "$APP"
+          mkdir -p captures
+          xcrun simctl launch "$DEV" be.willys.app; sleep 8
+          xcrun simctl io "$DEV" screenshot captures/0-qui-rentre.png
+          for o in accueil calendrier voyages cuisine loisirs chez-nous; do
+            xcrun simctl terminate "$DEV" be.willys.app || true
+            xcrun simctl launch "$DEV" be.willys.app -demoMoi loulou -demoOnglet "$o"; sleep 6
+            xcrun simctl io "$DEV" screenshot "captures/$o.png"
+          done
+          xcrun simctl ui "$DEV" appearance dark
+          xcrun simctl terminate "$DEV" be.willys.app || true
+          xcrun simctl launch "$DEV" be.willys.app -demoMoi loulou -demoOnglet accueil; sleep 6
+          xcrun simctl io "$DEV" screenshot captures/accueil-sombre.png
+
+      - name: Garder les captures et le journal
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: les-willys-iphone
+          path: |
+            LesWillys/captures
+            LesWillys/build.log
+          retention-days: 14
