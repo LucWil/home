@@ -523,6 +523,13 @@ a.w-tile:hover,button.w-tile:hover{transform:translateY(-2px);border-color:color
 .ag-dec span{color:var(--muted)}
 .ag-dec .ag-dec-k{justify-self:start;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:#1f7a6c;background:color-mix(in srgb,#2c9a8a 16%,var(--door));border-radius:999px;padding:1px 8px}
 .ag-dec .ag-dec-i{font-size:26px;color:inherit}
+.vv-c{font:inherit;text-align:left;cursor:pointer}
+.vv-ph{width:100%;height:96px;object-fit:cover;border-radius:12px;display:block;margin-bottom:4px}
+.vv-px b{font-family:var(--f-display);font-size:20px;color:var(--ink)}
+.ag-dec .ag-dec-k.vv-baisse{color:#fff;background:var(--ok)}
+.ag-dec .ag-dec-k.vv-bas{color:var(--ok);background:color-mix(in srgb,var(--ok) 16%,var(--door))}
+.ag-dec .ag-dec-k.vv-pep{color:var(--accent-ink);background:color-mix(in srgb,var(--accent) 30%,var(--door))}
+.ag-dec .ag-dec-k.vv-neige{color:var(--sky-title);background:color-mix(in srgb,var(--sky1) 14%,var(--door))}
 .ag-dec-bp .ag-dec-k{color:var(--accent-ink);background:color-mix(in srgb,var(--accent) 30%,var(--door))}
 /* La saison à Fréjus (préfixe fs-) */
 .fs-mois-l{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:14px}
@@ -1063,8 +1070,9 @@ function renderHome(){
   let gaspi=""; try{ gaspi=czGaspi(true); }catch{}
   /* L'ordre de l'accueil : la date et l'agenda du jour, le marché du jour, les pièces de la maison, puis « À découvrir » et le reste. */
   let une="", dec=""; try{ une=agUne("haut"); dec=agUne("bas"); }catch(e){ console.error(e); }
+  let vv=""; try{ vv=vvHtml(); }catch(e){ console.error(e); }
   return today+une+`
-  <section class="w-tiles" aria-label="Les pièces de la maison">${tuiles}</section>`+dec+rappelSv+gaspi+`
+  <section class="w-tiles" aria-label="Les pièces de la maison">${tuiles}</section>`+dec+(vv?`<section aria-label="Les bonnes affaires voyage" style="min-width:0;max-width:100%">${vv}</section>`:"")+rappelSv+gaspi+`
   <section class="w-tiles" aria-label="La vie de la maison">${vie}</section>
   <div class="section" id="w-mots">
     <div class="section-head"><h2>Les petits mots</h2><button class="btn accent" data-add="mot">Laisser un mot</button></div>
@@ -7625,6 +7633,48 @@ function agUne(part){
   return x?`<section aria-label="Près de chez nous" style="min-width:0;max-width:100%">${x}</section>`:""; }
 /* L'accueil se remet à jour toutes les 5 minutes : un marché fini disparaît, celui qui ouvre apparaît. */
 setInterval(()=>{ try{ if(S.me&&route()==="accueil"&&!document.querySelector(".sheet-bg")&&!document.querySelector(".tm")&&document.visibilityState==="visible") render(); }catch{} },5*60e3);
+/* Les bonnes affaires voyage, venues de « Veille voyages 2027 » (copiées chaque jour par une tâche planifiée) :
+   collection voyagedeals {type:"releve"|"pepite"|"neige", titre, detail (hôtel ou logement), format, depart, retour, prix (total), personnes, prixPers,
+   baisse (€ depuis le relevé précédent), depuisDebut (€ depuis le premier relevé), plusBas, etoiles, note (Booking /10), temp, pluie (%), lien, photo, depuis, pourquoi, releve, score}. */
+plusColl("voyagedeals",(a,b)=>(+b.score||0)-(+a.score||0));
+const VV_URL="https://claude.ai/artifact/XTmvLd7b2V5Mse3HtFJ2T5";
+const vvLien = x => urlSure(x.lien)||bookingUrl([x.detail,x.titre].filter(Boolean).join(", "),x.depart,x.retour,+x.personnes||2);
+function vvBadge(x){ if(x.type==="pepite") return ["pépite de la semaine","vv-pep"]; if(+x.baisse>=20) return ["prix en baisse : −"+eur(+x.baisse).replace(",00",""),"vv-baisse"];
+  if(x.plusBas) return ["prix le plus bas suivi","vv-bas"]; if(x.type==="neige") return ["ski à "+(+x.personnes||8),"vv-neige"]; return ["à suivre",""]; }
+function vvHtml(){
+  const t=todayIso(), l=(S.voyagedeals||[]).filter(x=>x.depart&&x.depart>t).slice(0,12); if(!l.length) return "";
+  const carte=x=>{ const [b,c]=vvBadge(x);
+    return `<button type="button" class="ag-dec vv-c" data-vv="${esc(x.id)}">${photoOk(x.photo)?`<img class="vv-ph" src="${esc(x.photo)}" alt="" loading="lazy">`:`<span class="ag-dec-i">${x.type==="neige"?"⛷️":x.type==="pepite"?"🌴":"✈️"}</span>`}
+      <span class="ag-dec-k ${c}">${esc(b)}</span><b>${esc(x.titre)}</b><span>${esc(fmtD(x.depart,{day:"numeric",month:"short"}))} → ${esc(fmtD(x.retour,{day:"numeric",month:"short"}))}${x.format?" · "+esc(x.format):""}</span>
+      <span class="vv-px"><b>${esc(eur(+x.prix).replace(",00",""))}</b> pour ${+x.personnes||2}${+x.personnes>2?` · ${esc(eur(+x.prixPers).replace(",00",""))} / pers.`:""}</span>
+      <span>${x.temp!=null?"☀️ "+x.temp+" °C":""}${x.note?(x.temp!=null?" · ":"")+"Booking "+String(x.note).replace(".",","):""}</span></button>`; };
+  const maj=(S.voyagedeals||[]).map(x=>x.releve||"").sort().pop();
+  return `<div class="ag-decs-w"><div class="section-head" style="margin-bottom:6px"><h3>✈️ Les bonnes affaires voyage</h3><a href="${VV_URL}" target="_blank" rel="noopener" class="w-switch">Veille voyages ›</a></div>
+    <div class="ag-decs">${l.map(carte).join("")}</div><p class="hint" style="margin:2px 0 0">Prix suivis chaque semaine au départ de Bruxelles${maj?" · relevé du "+esc(fmtD(maj,{day:"numeric",month:"long"})):""}. Touche une offre pour la proposer à la famille.</p></div>`; }
+function vvFiche(id){
+  const x=(S.voyagedeals||[]).find(v=>v.id===id); if(!x) return; const [b]=vvBadge(x), lien=vvLien(x);
+  const bg=sheet(`${photoOk(x.photo)?`<img src="${esc(x.photo)}" alt="" style="width:100%;max-height:220px;object-fit:cover;border-radius:16px">`:""}
+  <h2>${esc(x.titre)}</h2><p class="muted" style="margin:0">${esc(x.detail||"")}${x.etoiles?" · "+"★".repeat(+x.etoiles):""}${x.note?" · Booking "+String(x.note).replace(".",",")+"/10":""}</p>
+  <div class="door" style="background:var(--bg);display:grid;gap:6px">
+    <div class="fs-tarif"><span>Dates</span><b>${esc(fmtD(x.depart,{weekday:"short",day:"numeric",month:"long"}))} → ${esc(fmtD(x.retour,{weekday:"short",day:"numeric",month:"long",year:"numeric"}))}</b></div>
+    <div class="fs-tarif"><span>Prix ${x.type==="neige"?"du logement":"vol + hôtel"} pour ${+x.personnes||2}</span><b>${esc(eur(+x.prix))}</b></div>
+    ${+x.personnes>2?`<div class="fs-tarif"><span>Par personne</span><b>${esc(eur(+x.prixPers))}</b></div>`:""}
+    ${+x.baisse?`<div class="fs-tarif"><span>Depuis le relevé précédent</span><b style="color:var(--ok)">−${esc(eur(+x.baisse))}</b></div>`:""}
+    ${+x.depuisDebut>0?`<div class="fs-tarif"><span>Depuis le début du suivi</span><b style="color:var(--ok)">−${esc(eur(+x.depuisDebut))}</b></div>`:""}
+    ${x.temp!=null?`<div class="fs-tarif"><span>Météo moyenne</span><b>${x.temp} °C${x.pluie!=null?" · pluie "+x.pluie+" % des jours":""}</b></div>`:""}
+    ${x.depuis?`<div class="fs-tarif"><span>Départ</span><b>${esc(x.depuis)}</b></div>`:""}
+    <span class="hint">${esc(b)}${x.pourquoi?" · "+esc(x.pourquoi):""}</span></div>
+  <p class="hint" style="margin:0">Les prix bougent tous les jours : vérifie avant de réserver.</p>
+  <div class="row" style="gap:8px"><button class="btn accent" style="flex:none" id="vv-prop">🙋 Proposer à la famille</button>
+    <a class="btn ghost" style="flex:none;text-decoration:none" href="${esc(lien)}" target="_blank" rel="noopener">${urlSure(x.lien)?"Voir l'offre":"Voir l'hôtel sur Booking"} ↗</a>
+    <button class="btn ghost" style="flex:none" data-close>Fermer</button></div>`);
+  bg.querySelector("#vv-prop").onclick=async()=>{
+    const d={kind:x.type==="neige"?"weekend":"voyage",title:x.titre+(x.detail?" — "+x.detail:""),when:fmtD(x.depart,{day:"numeric",month:"long"})+" → "+fmtD(x.retour,{day:"numeric",month:"long",year:"numeric"}),
+      price:eur(+x.prix)+" pour "+(+x.personnes||2)+(+x.personnes>2?" ("+eur(+x.prixPers)+" / pers.)":""),link:lien,photo:photoOk(x.photo)&&/^https:/.test(x.photo)?x.photo:"",
+      note:[x.pourquoi,+x.baisse?"Le prix vient de baisser de "+eur(+x.baisse)+".":"",x.temp!=null?x.temp+" °C en moyenne.":"","Trouvé par Veille voyages."].filter(Boolean).join(" "),by:S.me,at:Date.now()};
+    if(await save("ideas",d)){ closeSheet(); toast("Proposé à toute la famille : chacun peut dire « J'en suis »"); } };
+}
+BIND_PLUS.push(root=>{ root.querySelectorAll("[data-vv]").forEach(b=>b.onclick=()=>vvFiche(b.dataset.vv)); });
 function agCarte(a){
   const [cl,ci]=AG_CATS[a.cat]||AG_CATS.autre, t=Object.keys(a.tente||{}).filter(k=>M[k]), moi=!!(a.tente||{})[S.me], lien=urlSure(a.lien);
   const quand=a.fin&&a.fin>a.debut?fmtD(a.debut,{day:"numeric",month:"short"})+" → "+fmtD(a.fin,{day:"numeric",month:"short"}):fmtD(a.debut,{weekday:"long",day:"numeric",month:"long"});
