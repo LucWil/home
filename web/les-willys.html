@@ -7591,6 +7591,22 @@ function agCarte(a){
         ${t.length?`<span class="stack">${t.map(k=>mag(k,"sm")).join("")}</span>`:""}
         ${a.evId&&S.events.some(e=>e.id===a.evId)?`<span class="hint">au calendrier ✓</span>`:`<button class="react" data-agcal="${esc(a.id)}">Au calendrier</button>`}
         ${wa(a.titre+" — "+quand+(a.heure?" "+a.heure:"")+" à "+(a.commune||"")+(lien?"\n"+lien:""))}</div></div></div>`; }
+/* La pharmacie de garde : meta/pharmacies-garde {maj, liste:[{zone, commune, nom, adresse, tel, du, au, source, lien}]} remplie par la recherche automatique ; sinon les services officiels. */
+const AG_CP={"Chaumont-Gistoux":"1325","Perwez":"1360","Jodoigne":"1370","Ramillies":"1367","Wavre":"1300"};
+function agPharma(zone){
+  const d=S.meta.find(x=>x.id==="pharmacies-garde"), t=todayIso();
+  const l=((d&&Array.isArray(d.liste))?d.liste:[]).filter(x=>(x.zone||"maison")===zone&&(!x.au||x.au>=t)&&(!x.du||x.du<=fjAdd(t,7)));
+  const carte=x=>`<div class="fs-opt"><div style="min-width:0;display:grid;gap:2px"><b>${esc(x.nom||"")}</b><span class="hint">${esc([x.commune,x.du&&x.au?"du "+fmtD(x.du,{weekday:"short",day:"numeric",month:"short"})+" au "+fmtD(x.au,{weekday:"short",day:"numeric",month:"short"}):""].filter(Boolean).join(" · "))}</span>
+    ${x.adresse?`<a class="hint" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(x.adresse)}" target="_blank" rel="noopener">${esc(x.adresse)}</a>`:""}${urlSure(x.lien)?`<a class="hint" href="${esc(urlSure(x.lien))}" target="_blank" rel="noopener">source : ${esc(x.source||"lien")} ↗</a>`:""}</div>
+    ${x.tel?`<a class="react" style="text-decoration:none;flex:none;min-width:0" href="tel:${esc(String(x.tel).replace(/[^0-9+]/g,""))}">Appeler</a>`:""}</div>`;
+  const off=zone==="frejus"
+    ?`<div class="row" style="gap:6px;flex-wrap:wrap"><a class="react" style="text-decoration:none;flex:none;min-width:0" href="tel:3237">📞 3237 (service officiel, 0,35 €/min)</a><a class="react" style="text-decoration:none;flex:none;min-width:0" href="https://www.3237.fr" target="_blank" rel="noopener">3237.fr ↗</a></div>`
+    :`<div class="row" style="gap:6px;flex-wrap:wrap"><a class="react" style="text-decoration:none;flex:none;min-width:0" href="tel:090399000">📞 0903 99 000 (service officiel, 1,50 €/min)</a><a class="react" style="text-decoration:none;flex:none;min-width:0" href="https://www.pharmacie.be" target="_blank" rel="noopener">pharmacie.be ↗</a>
+      ${Object.entries(AG_CP).map(([c,cp])=>`<a class="tag" style="text-decoration:none;flex:none;min-width:0" target="_blank" rel="noopener" href="https://www.google.com/search?q=${encodeURIComponent("pharmacie de garde "+cp+" "+c)}">${esc(c)} ↗</a>`).join("")}</div>`;
+  return `<div class="door" style="margin-top:14px;border-color:var(--ok)"><div class="section-head"><h3>💊 La pharmacie de garde</h3>${d&&d.maj?`<span class="cnt">cherché le ${esc(fmtD(d.maj,{day:"numeric",month:"short"}))}</span>`:""}</div>
+    ${l.length?`<div class="fs-ops">${l.map(carte).join("")}</div><p class="hint" style="margin:4px 0 8px">Les gardes changent souvent (en Belgique, d'habitude à 9 h) : en cas de doute, le service officiel fait foi.</p>`
+      :`<p class="hint" style="margin:4px 0 8px">${zone==="frejus"?"En France, le 3237 donne la pharmacie de garde la plus proche.":"La recherche automatique n'a pas encore trouvé la garde de la semaine : le service officiel des pharmaciens la donne d'après ton code postal."}</p>`}
+    ${off}</div>`; }
 function renderAgenda(){
   const zone=S.agZone==="frejus"?"frejus":"maison", com=S.agCom||"", per=S.agPer||"2s", t=todayIso(), [w0,w1]=agWeekend(), sj=agSejourFj();
   let l=agAVenir().filter(a=>(a.zone||"maison")===zone);
@@ -7605,6 +7621,7 @@ function renderAgenda(){
   :`<div class="door" style="margin-top:10px">${sj?`<b>Séjour du ${esc(fmtD(sj.start,{day:"numeric",month:"long"}))} au ${esc(fmtD(fjFin(sj),{day:"numeric",month:"long"}))}</b><div class="hint">Les activités de Fréjus, Saint-Raphaël et des environs pendant le séjour. Elles arrivent quelques semaines avant le départ.</div>
       <div class="row" style="margin-top:8px"><button class="react" data-agper="${per==="tout"?"2s":"tout"}">${per==="tout"?"Seulement pendant le séjour":"Tout voir"}</button></div>`
     :`<b>Pas de séjour à Fréjus au calendrier</b><div class="hint">Dès qu'un séjour « Maison de Fréjus » est prévu, la recherche ajoute ici ce qui se passe sur place pendant ces dates.</div>`}</div>`}
+  ${agPharma(zone)}
   <div class="door" style="margin-top:14px">${l.length?l.map(agCarte).join(""):`<div class="empty">Rien pour l'instant${zone==="maison"&&(com||per!=="tout")?" avec ces filtres":""}. La recherche passe chaque semaine.</div>`}</div>
   <p class="hint" style="margin-top:10px">Trouvé par Claude dans les agendas des communes, des offices du tourisme et des journaux, et sur les pages Facebook et Instagram publiques${maj?" · dernière recherche le "+esc(fmtD(maj,{day:"numeric",month:"long"})):""}. Chaque activité garde son lien : vérifie la date et l'heure à la source avant de partir.</p>`; }
 plusRoute("agenda",renderAgenda,"Près de chez nous","regarde l'agenda du coin");
