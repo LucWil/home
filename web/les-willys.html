@@ -7576,7 +7576,7 @@ function agSejourFj(){ const t=todayIso(); return S.events.filter(e=>e.type==="f
 const agWeekend = () => { const d=new Date(), j=(d.getDay()+6)%7, sam=fjAdd(todayIso(),Math.max(0,5-j)); return [j>=5?todayIso():fjAdd(sam,-1),fjAdd(sam,1)]; };
 TUILES_PLUS.push(()=>{ const l=agAVenir().filter(a=>a.zone!=="frejus"), [w0,w1]=agWeekend(), we=l.filter(a=>a.debut<=w1&&agFin(a)>=w0);
   return {r:"agenda",t:"Près de chez nous",c:"var(--m-julien)",ico:AG_ICO,b:we.length?String(we.length):"",
-    p:l.length?esc(we.length?agPl(we.length,"idée ce week-end","idées ce week-end"):l[0].titre+" · "+fmtD(l[0].debut,{weekday:"short",day:"numeric",month:"short"}).replace(/\./g,"")):"Marchés, fêtes, concerts du coin"}; });
+    p:(()=>{ const n=l.filter(agNoel)[0]; return n&&+todayIso().slice(5,7)>=11?esc("🎄 "+n.commune+" · "+fmtD(n.debut,{day:"numeric",month:"short"}).replace(/\./g,"")):""; })()||(l.length?esc(we.length?agPl(we.length,"idée ce week-end","idées ce week-end"):l[0].titre+" · "+fmtD(l[0].debut,{weekday:"short",day:"numeric",month:"short"}).replace(/\./g,"")):"Marchés, fêtes, concerts du coin")}; });
 AUJ_PLUS.push(t=>agAVenir().filter(a=>a.debut<=t&&agFin(a)>=t&&Object.keys(a.tente||{}).length).map(a=>`<a class="w-ev" href="#agenda" style="--c:var(--m-julien)"><i></i><div><b>${esc(a.titre)}</b><span>${esc([a.heure,a.commune].filter(Boolean).join(" · "))} · ça tente ${esc(Object.keys(a.tente).filter(k=>M[k]).map(k=>M[k].n).join(", "))}</span></div></a>`).join(""));
 function agCarte(a){
   const [cl,ci]=AG_CATS[a.cat]||AG_CATS.autre, t=Object.keys(a.tente||{}).filter(k=>M[k]), moi=!!(a.tente||{})[S.me], lien=urlSure(a.lien);
@@ -7607,9 +7607,35 @@ function agPharma(zone){
     ${l.length?`<div class="fs-ops">${l.map(carte).join("")}</div><p class="hint" style="margin:4px 0 8px">Les gardes changent souvent (en Belgique, d'habitude à 9 h) : en cas de doute, le service officiel fait foi.</p>`
       :`<p class="hint" style="margin:4px 0 8px">${zone==="frejus"?"En France, le 3237 donne la pharmacie de garde la plus proche.":"La recherche automatique n'a pas encore trouvé la garde de la semaine : le service officiel des pharmaciens la donne d'après ton code postal."}</p>`}
     ${off}</div>`; }
+/* Les bons plans (Black Friday, Cyber Monday, soldes) : collection bonsplans {titre, enseigne, cat, remise, prix, prixAvant, du, au, lien, source, resume, pourQui, trouveLe}, remplie par la recherche automatique. */
+plusColl("bonsplans",(a,b)=>(a.au||"9999").localeCompare(b.au||"9999"));
+const BP_CATS={hightech:["High-tech, TV","📺"],electromenager:["Électroménager, cuisine","🍳"],jouets:["Jouets, Saint-Nicolas","🧸"],mode:["Mode","👗"],maison:["Maison, déco","🛋"],voyage:["Voyages, hôtels","🧳"],beaute:["Beauté, santé","💄"],sport:["Sport","🚴"],auto:["Voiture, recharge","🔌"],telecom:["GSM, internet","📱"],autre:["Bons plans","🏷"]};
+/* Le Black Friday : le lendemain du 4e jeudi de novembre. */
+function bpJour(){ const y=+todayIso().slice(0,4), wd=new Date(y,10,1).getDay(), jeudi=1+((4-wd+7)%7)+21, d=y+"-11-"+String(jeudi+1).padStart(2,"0");
+  return todayIso()<=fjAdd(d,3)?"Black Friday le "+fmtD(d,{weekday:"long",day:"numeric",month:"long"}):"jusqu'aux soldes"; }
+function bpHtml(){
+  const t=todayIso(), f=S.bpCat||"", l=S.bonsplans.filter(x=>!x.au||x.au>=t);
+  if(!l.length) return "";
+  const vus=f?l.filter(x=>x.cat===f):l, cats=[...new Set(l.map(x=>x.cat||"autre"))];
+  const carte=x=>{ const [cl,ci]=BP_CATS[x.cat]||BP_CATS.autre, lien=urlSure(x.lien), enCours=!x.du||x.du<=t;
+    return `<div class="fs-opt" style="grid-template-columns:minmax(0,1fr)"><div style="min-width:0;display:grid;gap:4px">
+      <div class="fs-oh"><b>${ci} ${esc(x.titre||"")}</b>${x.remise?`<span class="fs-st fs-libre">${esc(x.remise)}</span>`:""}<span class="fs-st ${enCours?"":"fs-pris"}">${enCours?(x.au?"jusqu'au "+esc(fmtD(x.au,{day:"numeric",month:"short"})):"en cours"):"dès le "+esc(fmtD(x.du,{day:"numeric",month:"short"}))}</span></div>
+      <div class="hint" style="color:var(--ink)">${esc(x.enseigne||"")}${x.prix?` · <b>${esc(x.prix)}</b>`:""}${x.prixAvant?` <s>${esc(x.prixAvant)}</s>`:""}${x.pourQui?" · pour "+esc(x.pourQui):""}</div>
+      ${x.resume?`<div class="hint">${esc(x.resume)}</div>`:""}
+      <div class="row" style="gap:6px;align-items:center">${lien?`<a class="react" style="text-decoration:none;flex:none;min-width:0" href="${esc(lien)}" target="_blank" rel="noopener">Voir l'offre ↗</a>`:""}<span class="hint">${esc(x.source||"")}</span>${wa("Bon plan : "+(x.titre||"")+(x.enseigne?" chez "+x.enseigne:"")+(x.remise?" ("+x.remise+")":"")+(lien?"\n"+lien:""))}</div></div></div>`; };
+  return `<div class="door" style="margin-top:14px;border-color:var(--accent)"><div class="section-head"><h3>🛍 Black Friday et bons plans</h3><span class="cnt">${esc(bpJour())}</span></div>
+    <div class="pick" style="gap:6px">${["",...cats].map(c=>`<button type="button" class="tag" data-bpcat="${esc(c)}" style="border:2px solid ${f===c?"var(--ink)":"transparent"}">${esc(c?(BP_CATS[c]||BP_CATS.autre)[1]+" "+(BP_CATS[c]||BP_CATS.autre)[0]:"Tout")}</button>`).join("")}</div>
+    <div class="fs-ops">${vus.map(carte).join("")}</div>
+    <p class="hint" style="margin:6px 0 0">Trouvé par Claude sur les sites des enseignes et les sites de bons plans. Compare le prix sur deux sites avant d'acheter : certaines « remises » partent d'un prix gonflé.</p></div>`; }
+/* En novembre et décembre, les marchés de Noël ont leur encadré, quel que soit le filtre de période. */
+const agNoel = a => /no[eë]l|christmas|kerst/i.test((a.titre||"")+" "+(a.resume||""))&&a.cat==="marche";
+function agNoelHtml(){ const m=+todayIso().slice(5,7); if(m<11&&m!==1) return "";
+  const l=agAVenir().filter(a=>(a.zone||"maison")==="maison"&&agNoel(a)); if(!l.length) return "";
+  return `<div class="door" style="margin-top:14px;border-color:var(--sc-be);background:color-mix(in srgb,var(--sc-be) 7%,var(--door))"><div class="section-head"><h3>🎄 Les marchés de Noël</h3><span class="cnt">${l.length}</span></div>${l.map(agCarte).join("")}</div>`; }
 function renderAgenda(){
   const zone=S.agZone==="frejus"?"frejus":"maison", com=S.agCom||"", per=S.agPer||"2s", t=todayIso(), [w0,w1]=agWeekend(), sj=agSejourFj();
-  let l=agAVenir().filter(a=>(a.zone||"maison")===zone);
+  const saisonNoel=+t.slice(5,7)>=11||+t.slice(5,7)===1;
+  let l=agAVenir().filter(a=>(a.zone||"maison")===zone&&!(zone==="maison"&&saisonNoel&&agNoel(a)));
   if(zone==="maison"&&com) l=l.filter(a=>a.commune===com);
   if(zone==="frejus"&&sj&&per!=="tout") l=l.filter(a=>a.debut<=fjFin(sj)&&agFin(a)>=sj.start);
   else if(per==="we") l=l.filter(a=>a.debut<=w1&&agFin(a)>=w0); else if(per==="2s") l=l.filter(a=>a.debut<=fjAdd(t,14));
@@ -7622,6 +7648,8 @@ function renderAgenda(){
       <div class="row" style="margin-top:8px"><button class="react" data-agper="${per==="tout"?"2s":"tout"}">${per==="tout"?"Seulement pendant le séjour":"Tout voir"}</button></div>`
     :`<b>Pas de séjour à Fréjus au calendrier</b><div class="hint">Dès qu'un séjour « Maison de Fréjus » est prévu, la recherche ajoute ici ce qui se passe sur place pendant ces dates.</div>`}</div>`}
   ${agPharma(zone)}
+  ${zone==="maison"?agNoelHtml():""}
+  ${zone==="maison"?bpHtml():""}
   <div class="door" style="margin-top:14px">${l.length?l.map(agCarte).join(""):`<div class="empty">Rien pour l'instant${zone==="maison"&&(com||per!=="tout")?" avec ces filtres":""}. La recherche passe chaque semaine.</div>`}</div>
   <p class="hint" style="margin-top:10px">Trouvé par Claude dans les agendas des communes, des offices du tourisme et des journaux, et sur les pages Facebook et Instagram publiques${maj?" · dernière recherche le "+esc(fmtD(maj,{day:"numeric",month:"long"})):""}. Chaque activité garde son lien : vérifie la date et l'heure à la source avant de partir.</p>`; }
 plusRoute("agenda",renderAgenda,"Près de chez nous","regarde l'agenda du coin");
@@ -7632,6 +7660,7 @@ async function agCal(id){ const a=S.agenda.find(x=>x.id===id); if(!a) return;
   const ev={type:"ensemble",title:(AG_CATS[a.cat]||AG_CATS.autre)[1]+" "+a.titre+(a.heure?" ("+a.heure+")":"")+(a.commune?" · "+a.commune:""),start:a.debut,end:agFin(a),people:[S.me,...Object.keys(a.tente||{}).filter(k=>k!==S.me&&M[k])],by:S.me,at:Date.now()};
   try{ const ref=await S.db.collection("events").add(ev); if(ref&&ref.id){ await S.db.collection("agenda").doc(id).update({evId:ref.id}); a.evId=ref.id; } toast("Ajouté au calendrier"); render(); }catch{ toast(S.db?"Pas enregistré.":"Connecte-toi à claude.ai pour enregistrer."); } }
 BIND_PLUS.push(root=>{
+  root.querySelectorAll("[data-bpcat]").forEach(b=>b.onclick=()=>{ S.bpCat=b.dataset.bpcat; render(); });
   root.querySelectorAll("[data-agzone]").forEach(b=>b.onclick=()=>{ S.agZone=b.dataset.agzone; render(); });
   root.querySelectorAll("[data-agcom]").forEach(b=>b.onclick=()=>{ S.agCom=b.dataset.agcom; render(); });
   root.querySelectorAll("[data-agper]").forEach(b=>b.onclick=()=>{ S.agPer=b.dataset.agper; render(); });
