@@ -52,6 +52,7 @@ struct CarteIdee: View {
     let reactions: [Reaction]
     @Environment(\.modelContext) private var ctx
     @Environment(\.colorScheme) private var scheme
+    @Query private var etapes: [Etape]
 
     private static let choix = [("adore", "😍", "J'adore"), ("partant", "🙋", "J'en suis"), ("bof", "🤔", "Bof")]
 
@@ -75,6 +76,13 @@ struct CarteIdee: View {
                 HStack { Aimant(membre: idee.par, taille: 26); Text(idee.titre).font(Theme.titre(19)) }
                 if !idee.quand.isEmpty { Label(idee.quand, systemImage: "calendar").font(.willys(.subheadline)).foregroundStyle(.secondary) }
                 if !idee.note.isEmpty { Text(idee.note).font(.willys(.subheadline)) }
+                if idee.genre == "voyage" {
+                    let n = etapes.filter { $0.voyage == idee.cle }.count
+                    NavigationLink { ProgrammeVoyageView(idee: idee, moi: moi) } label: {
+                        Label(n == 0 ? "Organiser le voyage sur la carte" : "Programme et carte · \(n) étape\(n > 1 ? "s" : "")", systemImage: "map")
+                            .font(.willys(.subheadline, poids: .bold)).frame(minHeight: 44, alignment: .leading)
+                    }
+                }
                 if let url = URL(string: idee.lien), !idee.lien.isEmpty { Link("Voir l'offre", destination: url).font(.willys(.subheadline, poids: .bold)) }
                 HStack(spacing: 6) {
                     ForEach(Self.choix, id: \.0) { k, e, l in

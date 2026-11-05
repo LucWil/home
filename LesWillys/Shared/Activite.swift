@@ -31,6 +31,7 @@ import CloudKit
         case "mot": return "a laissé un mot : « \(detail) »"
         case "evenement": return n > 1 ? "a ajouté \(n) dates au calendrier" : "a ajouté « \(detail) » au calendrier"
         case "voyage": return "propose un voyage : \(detail)"
+        case "etape": return n > 1 ? "a ajouté \(n) étapes au programme d'un voyage" : "a ajouté « \(detail) » au programme du voyage"
         case "weekend": return "propose un week-end : \(detail)"
         case "photo": return n > 1 ? "a ajouté \(n) photos au mur" : "a ajouté une photo au mur"
         case "recette": return "a ajouté la recette « \(detail) »"
@@ -50,6 +51,7 @@ import CloudKit
         case "mot": "note.text"
         case "evenement": "calendar.badge.plus"
         case "voyage": "airplane"
+        case "etape": "mappin.and.ellipse"
         case "weekend": "sun.max"
         case "photo": "photo"
         case "recette": "frying.pan"
@@ -93,6 +95,7 @@ enum Journal {
                 case "voyage": gestes.append(("voyage", "voyages", i.titre))
                 default: gestes.append(("weekend", "weekends", i.titre))
                 }
+            case let e as Etape: gestes.append(("etape", "voyages", e.titre))
             case is Photo: gestes.append(("photo", "accueil", ""))
             case let r as Recette: gestes.append(("recette", "cuisine", r.titre))
             case let s as Sortie: gestes.append(("sortie", "loisirs", s.nom))

@@ -105,6 +105,7 @@ final class SynchroFamille: ObservableObject {
         ajouter(Activite.self)
         ajouter(Restaurant.self); ajouter(Sortie.self); ajouter(Hotel.self); ajouter(PhotoLoisir.self)
         ajouter(TacheMaison.self); ajouter(ObjetMaison.self); ajouter(ARacheter.self)
+        ajouter(Etape.self)
         FileSynchro.ajouter(lignes)
         envoyerFile()
     }
@@ -251,6 +252,7 @@ final class SynchroFamille: ObservableObject {
         case TacheMaison.typeEnregistrement: return chercher(TacheMaison.self)
         case ObjetMaison.typeEnregistrement: return chercher(ObjetMaison.self)
         case ARacheter.typeEnregistrement: return chercher(ARacheter.self)
+        case Etape.typeEnregistrement: return chercher(Etape.self)
         default: return nil
         }
     }
@@ -276,6 +278,7 @@ final class SynchroFamille: ObservableObject {
         case TacheMaison.typeEnregistrement: let t = TacheMaison(titre: "", heures: 1, ordre: 0); t.cle = id; o = t
         case ObjetMaison.typeEnregistrement: let m = ObjetMaison(objet: "", piece: "", quantite: 1, par: ""); m.cle = id; o = m
         case ARacheter.typeEnregistrement: let a = ARacheter(nom: "", par: ""); a.cle = id; o = a
+        case Etape.typeEnregistrement: let e = Etape(voyage: "", jour: 1, ordre: 0, titre: "", par: ""); e.cle = id; o = e
         case DocumentBrut.typeEnregistrement:
             let m = id.split(separator: ":", maxSplits: 1).map(String.init)
             o = DocumentBrut(collection: m.first ?? "", cle: m.count > 1 ? m[1] : id, json: Data(), foyer: "")
