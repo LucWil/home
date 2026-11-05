@@ -27,6 +27,9 @@ struct ChezNousView: View {
             } footer: { Text("Planifie tes tâches et tes peintures : l'écran dit quand chacune sera finie.") }
 
             Section {
+                NavigationLink { PresDeChezNousView(moi: moi) } label: {
+                    Label("Près de chez nous : marchés, activités, pharmacie de garde", systemImage: "location.north.circle")
+                }
                 NavigationLink { FrejusPlacardsView(moi: moi) } label: {
                     Label("Les placards de Fréjus", systemImage: "sun.max")
                 }

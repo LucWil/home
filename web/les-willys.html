@@ -7639,6 +7639,19 @@ const agNoel = a => /no[eë]l|christmas|kerst/i.test((a.titre||"")+" "+(a.resume
 function agNoelHtml(){ const m=+todayIso().slice(5,7); if(m<11&&m!==1) return "";
   const l=agAVenir().filter(a=>(a.zone||"maison")==="maison"&&agNoel(a)); if(!l.length) return "";
   return `<div class="door" style="margin-top:14px;border-color:var(--sc-be);background:color-mix(in srgb,var(--sc-be) 7%,var(--door))"><div class="section-head"><h3>🎄 Les marchés de Noël</h3><span class="cnt">${l.length}</span></div>${l.map(agCarte).join("")}</div>`; }
+/* Les marchés de la semaine : meta/marches-hebdo {maj, liste:[{commune, voisine, jours:[1-7, lundi=1], jour, heure, lieu, note, source, lien}]}. */
+const MH_JOURS=["","lundi","mardi","mercredi","jeudi","vendredi","samedi","dimanche"];
+function mhHtml(){
+  const d=S.meta.find(x=>x.id==="marches-hebdo"), l=(d&&Array.isArray(d.liste))?d.liste:[]; if(!l.length) return "";
+  const auj=((new Date().getDay()+6)%7)+1, dans=j=>(j-auj+7)%7;
+  const tri=l.map(m=>({...m,p:Math.min(...(m.jours||[8]).map(dans))})).sort((a,b)=>a.p-b.p||(a.voisine?1:0)-(b.voisine?1:0));
+  const carte=m=>{ const lien=urlSure(m.lien); return `<div class="fs-opt" style="grid-template-columns:minmax(0,1fr)"><div style="min-width:0;display:grid;gap:3px">
+    <div class="fs-oh"><b>🧺 ${esc(m.commune)}</b><span class="fs-st ${m.p===0?"fs-libre":""}">${m.p===0?"aujourd'hui":m.p===1?"demain":esc(m.jour||"")}</span>${m.voisine?`<span class="fs-st">dans les environs</span>`:""}</div>
+    <div class="hint" style="color:var(--ink)">${esc(m.jour||"")} · ${esc(m.heure||"")}</div>
+    <a class="hint" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((m.lieu||"")+", "+m.commune+", Belgique")}" target="_blank" rel="noopener">📍 ${esc(m.lieu||"")}</a>
+    ${m.note?`<div class="hint">${esc(m.note)}</div>`:""}${lien?`<a class="hint" href="${esc(lien)}" target="_blank" rel="noopener">source : ${esc(m.source||"lien")} ↗</a>`:""}</div></div>`; };
+  return `<div class="door" style="margin-top:14px"><details ${tri.some(m=>m.p===0)?"open":""}><summary style="cursor:pointer;list-style:none"><div class="section-head"><h3>🧺 Les marchés de la semaine</h3><span class="cnt">${tri.filter(m=>m.p===0).length?tri.filter(m=>m.p===0).length+" aujourd'hui":l.length+" marchés"} ▾</span></div></summary>
+    <div class="fs-ops">${tri.map(carte).join("")}</div><p class="hint" style="margin:4px 0 0">Les jours fériés et en été, les horaires peuvent changer.</p></details></div>`; }
 function renderAgenda(){
   const zone=S.agZone==="frejus"?"frejus":"maison", com=S.agCom||"", per=S.agPer||"2s", t=todayIso(), [w0,w1]=agWeekend(), sj=agSejourFj();
   const saisonNoel=+t.slice(5,7)>=11||+t.slice(5,7)===1;
@@ -7656,6 +7669,7 @@ function renderAgenda(){
     :`<b>Pas de séjour à Fréjus au calendrier</b><div class="hint">Dès qu'un séjour « Maison de Fréjus » est prévu, la recherche ajoute ici ce qui se passe sur place pendant ces dates.</div>`}</div>`}
   ${agPharma(zone)}
   ${zone==="maison"?agNoelHtml():""}
+  ${zone==="maison"?mhHtml():""}
   ${zone==="maison"?bpHtml():""}
   <div class="door" style="margin-top:14px">${l.length?l.map(agCarte).join(""):`<div class="empty">Rien pour l'instant${zone==="maison"&&(com||per!=="tout")?" avec ces filtres":""}. La recherche passe chaque semaine.</div>`}</div>
   <p class="hint" style="margin-top:10px">Trouvé par Claude dans les agendas des communes, des offices du tourisme et des journaux, et sur les pages Facebook et Instagram publiques${maj?" · dernière recherche le "+esc(fmtD(maj,{day:"numeric",month:"long"})):""}. Chaque activité garde son lien : vérifie la date et l'heure à la source avant de partir.</p>`; }

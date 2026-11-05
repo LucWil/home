@@ -27,6 +27,7 @@ struct AccueilView: View {
             VStack(alignment: .leading, spacing: 22) {
                 banniere
                 CarteNotifications()
+                CartePresDeChezNous(moi: moi)
                 ViewThatFits(in: .horizontal) {
                     HStack(alignment: .top, spacing: 16) { semaine; VStack(spacing: 16) { nouveau; passages } }
                     VStack(spacing: 16) { semaine; nouveau; passages }
