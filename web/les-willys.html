@@ -1037,7 +1037,7 @@ function renderHome(){
       ico:phJ?`<img src="${esc(phJ.u)}" alt="">`:W_ICO.mur,
       p:S.photos.length?pl(S.photos.length,"photo","photos"):"Le mur est vide"},
     (()=>{ const lt=locTuile(); return {r:"frejus",t:"Fréjus",c:"var(--m-ambre)",ico:W_ICO.fj,p:esc(lt?lt.p:fjTxt),b:lt&&lt.b||""}; })()
-  ,...PLUS(TUILES_PLUS).filter(Boolean)].map(tuile).join("");
+  ,...PLUS(TUILES_PLUS).filter(Boolean)].sort((a,b)=>(b.r==="agenda")-(a.r==="agenda")).map(tuile).join("");
   const vie=`<div class="w-tile w-wide"><h3>Ça bouge à la maison</h3>
     <div id="fil-box">${filHtml()}</div>
     <div class="w-pres" id="presence-box">${presenceHtml()}</div></div>`;
@@ -7578,6 +7578,13 @@ TUILES_PLUS.push(()=>{ const l=agAVenir().filter(a=>a.zone!=="frejus"), [w0,w1]=
   return {r:"agenda",t:"Près de chez nous",c:"var(--m-julien)",ico:AG_ICO,b:we.length?String(we.length):"",
     p:(()=>{ const n=l.filter(agNoel)[0]; return n&&+todayIso().slice(5,7)>=11?esc("🎄 "+n.commune+" · "+fmtD(n.debut,{day:"numeric",month:"short"}).replace(/\./g,"")):""; })()||(l.length?esc(we.length?agPl(we.length,"idée ce week-end","idées ce week-end"):l[0].titre+" · "+fmtD(l[0].debut,{weekday:"short",day:"numeric",month:"short"}).replace(/\./g,"")):"Marchés, fêtes, concerts du coin")}; });
 AUJ_PLUS.push(t=>agAVenir().filter(a=>a.debut<=t&&agFin(a)>=t&&Object.keys(a.tente||{}).length).map(a=>`<a class="w-ev" href="#agenda" style="--c:var(--m-julien)"><i></i><div><b>${esc(a.titre)}</b><span>${esc([a.heure,a.commune].filter(Boolean).join(" · "))} · ça tente ${esc(Object.keys(a.tente).filter(k=>M[k]).map(k=>M[k].n).join(", "))}</span></div></a>`).join(""));
+/* Dans le bandeau « Aujourd'hui » : les marchés de Noël et ce qui se passe dans les 7 jours (deux lignes au plus), plus les bons plans en cours. */
+AUJ_PLUS.push(t=>{ const l=agAVenir().filter(a=>(a.zone||"maison")==="maison"&&!(a.debut<=t&&Object.keys(a.tente||{}).length));
+  const noel=+t.slice(5,7)>=11?l.filter(agNoel):[], sem=l.filter(a=>!agNoel(a)&&a.debut<=fjAdd(t,7)), bp=(S.bonsplans||[]).filter(x=>(!x.au||x.au>=t)&&(!x.du||x.du<=t));
+  const ligne=(titre,sous)=>`<a class="w-ev" href="#agenda" style="--c:var(--m-julien)"><i></i><div><b>${titre}</b><span>${sous}</span></div></a>`;
+  return [noel.length?ligne("🎄 "+agPl(noel.length,"marché de Noël","marchés de Noël")+" près de chez nous",esc("le premier : "+noel[0].commune+", "+fmtD(noel[0].debut,{weekday:"long",day:"numeric",month:"long"}))):"",
+    sem.length?ligne("📍 "+esc(sem[0].titre),esc([fmtD(sem[0].debut,{weekday:"long",day:"numeric",month:"short"}),sem[0].commune].filter(Boolean).join(" · "))+(sem.length>1?" · et "+(sem.length-1)+" autre"+(sem.length>2?"s":""):"")):"",
+    bp.length?ligne("🛍 "+agPl(bp.length,"bon plan","bons plans")+" en cours",esc(bp.slice(0,3).map(x=>x.enseigne).filter(Boolean).join(", "))):""].join(""); });
 function agCarte(a){
   const [cl,ci]=AG_CATS[a.cat]||AG_CATS.autre, t=Object.keys(a.tente||{}).filter(k=>M[k]), moi=!!(a.tente||{})[S.me], lien=urlSure(a.lien);
   const quand=a.fin&&a.fin>a.debut?fmtD(a.debut,{day:"numeric",month:"short"})+" → "+fmtD(a.fin,{day:"numeric",month:"short"}):fmtD(a.debut,{weekday:"long",day:"numeric",month:"long"});
