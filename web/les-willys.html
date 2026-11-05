@@ -6671,9 +6671,11 @@ function hotelCard(h){
     ${k==="fini"||h.noteFinale?`<div style="border-top:1px dashed var(--line);padding-top:10px;display:grid;gap:8px">
       <b style="font-size:14px">Le séjour${h.noteFinale?` · <span style="color:var(--accent)">${stars(+h.noteFinale)}</span> ${esc(h.noteFinale)}/5`:""}</b>
       ${photosHtml(h.photos,false)}${impressionsHtml(h.avis)}</div>`:""}
+    ${hsPassagesHtml(h)}
     <div class="row" style="align-items:center;gap:6px">
       ${k==="fini"||k==="encours"?`<button class="btn accent" style="flex:none" data-sejour="${esc(h.id)}">${h.noteFinale?"Modifier le séjour":"Noter le séjour"}</button>
         <button class="react" data-hotel-avis="${esc(h.id)}">Laisser un avis</button>`:""}
+      <button class="react" data-hspass="${esc(h.id)}:">+ Un séjour qu'on y a fait</button>
       <button class="react" data-hotel-edit="${esc(h.id)}">Modifier</button>
       ${wa("Hôtel : "+h.name+(h.city?" à "+h.city:"")+(h.arrivee?" — du "+fmtD(h.arrivee,{day:"numeric",month:"long"})+(h.depart?" au "+fmtD(h.depart,{day:"numeric",month:"long"}):""):"")+(h.confirmation?" — réservation "+h.confirmation:"")+(resa?"\n"+resa:""))}
       ${h.by===S.me?`<button class="react" data-del="hotels:${esc(h.id)}">Retirer</button>`:""}</div>
@@ -6728,12 +6730,13 @@ function formHotel(h0){
     if(await save("hotels",d)){ closeSheet(); toast("Hôtel noté"+(d.rappel?" · rappel d'annulation au calendrier":"")); } };
 }
 function formSejour(h){
-  const avis={...(h.avis||{})}, mien=avis[S.me]||{}; let st=+mien.stars||+h.noteFinale||0;
+  const avis={...(h.avis||{})}, mien=avis[S.me]||{}; let st=+mien.stars||+h.noteFinale||0; const serv={...(mien.services||{})};
   const photos=[...(h.photos||[])];
   const bg=sheet(`<h2>${esc(h.name)}</h2><p class="muted" style="margin:0">Le séjour${h.arrivee?" du "+esc(fmtD(h.arrivee,{day:"numeric",month:"long"})):""} : la note finale, le prix payé et quelques photos.</p>
   <div class="door" style="background:var(--bg);display:grid;gap:10px"><b>La note finale</b>
     <div class="pick" style="gap:4px">${[1,2,3,4,5].map(n=>`<button type="button" data-hst="${n}" aria-label="${n} étoile${n>1?"s":""}" style="font-size:30px;color:var(--accent);border:0;background:none;padding:0 2px">${st>=n?"★":"☆"}</button>`).join("")}</div>
     <textarea id="hs-mot" maxlength="500" placeholder="Ex. literie parfaite, petit-déjeuner copieux, borne de recharge en panne">${esc(mien.mot||"")}</textarea></div>
+  ${hsGrille("hs-sv",serv)}
   <label>Prix payé au final (€) <span class="hint">avec la taxe de séjour, les extras…</span><input id="hs-px" inputmode="decimal" value="${esc(String(h.prixFinal||h.prix||"").replace(".",","))}"></label>
   <div class="door" style="background:var(--bg);display:grid;gap:10px"><b>📷 Les photos</b>
     <div class="row" style="gap:8px"><label class="btn ghost" for="hs-ch" style="flex:none;cursor:pointer">La chambre</label><input id="hs-ch" type="file" accept="image/*" style="display:none">
@@ -6741,6 +6744,7 @@ function formSejour(h){
     <div id="hs-phs"></div><span class="hint" id="hs-st">Jusqu'à 6 photos.</span></div>
   <div class="row"><button class="btn ghost" data-close style="flex:none">Annuler</button><button class="btn accent" style="flex:none" id="hs-ok">Enregistrer</button></div>`);
   const q=id=>bg.querySelector(id);
+  hsLier(bg,"hs-sv",serv);
   bg.querySelectorAll("[data-hst]").forEach(b=>b.onclick=()=>{ st=+b.dataset.hst; bg.querySelectorAll("[data-hst]").forEach(x=>x.textContent=st>=+x.dataset.hst?"★":"☆"); });
   const draw=()=>{ q("#hs-phs").innerHTML=photosHtml(photos,true)+(photos.length?`<button type="button" class="react" id="hs-raz" style="margin-top:6px">Retirer la dernière photo</button>`:"");
     const rz=q("#hs-raz"); if(rz) rz.onclick=()=>{ photos.pop(); draw(); }; };
@@ -6749,7 +6753,7 @@ function formSejour(h){
     if(photos.length>=6){ q("#hs-st").textContent="Six photos maximum."; return; }
     const u=await shotUrl(f,640,.72); if(u){ photos.push({url:u,quoi,par:S.me}); draw(); } };
   q("#hs-ch").onchange=ajoute("chambre"); q("#hs-am").onchange=ajoute("ambiance");
-  q("#hs-ok").onclick=async()=>{ avis[S.me]={stars:st,mot:q("#hs-mot").value.trim(),at:Date.now()};
+  q("#hs-ok").onclick=async()=>{ avis[S.me]={stars:st,mot:q("#hs-mot").value.trim(),services:serv,at:Date.now()};
     const notes=Object.values(avis).map(a=>+a.stars).filter(Boolean), moy=notes.length?Math.round(notes.reduce((s,x)=>s+x,0)/notes.length*10)/10:0;
     try{ await S.db.collection("hotels").doc(h.id).update({avis,noteFinale:moy,prixFinal:nb(q("#hs-px").value),photos});
       closeSheet(); toast("Séjour noté");
@@ -6760,7 +6764,8 @@ function renderBudgetLoisirs(){
   const h=myHome(), an=S.loisAn||new Date().getFullYear();
   const lignes=[
     ...S.sorties.filter(s=>s.home===h&&s.type==="resto"&&nb(s.montant)).map(s=>({k:"resto",nom:s.nom,date:s.date,v:nb(s.montant)})),
-    ...S.hotels.filter(x=>x.home===h&&x.arrivee&&(nb(x.prixFinal)||nb(x.prix))).map(x=>({k:"hotel",nom:x.name,date:x.arrivee,v:nb(x.prixFinal)||nb(x.prix)}))
+    ...S.hotels.filter(x=>x.home===h&&x.arrivee&&(nb(x.prixFinal)||nb(x.prix))).map(x=>({k:"hotel",nom:x.name,date:x.arrivee,v:nb(x.prixFinal)||nb(x.prix)})),
+    ...S.sorties.filter(s=>s.home===h&&s.type==="hotel"&&nb(s.montant)).map(s=>({k:"hotel",nom:s.nom,date:s.date,v:nb(s.montant)}))
   ].filter(l=>(l.date||"").slice(0,4)===String(an)).map(l=>({...l,vo:voyageDe(l.date)}));
   const som=a=>a.reduce((s,x)=>s+x.v,0);
   const hors=lignes.filter(l=>!l.vo), vac=lignes.filter(l=>l.vo);
@@ -7490,6 +7495,74 @@ async function fqRaye(k){ const l=fqListe().slice(); if(!l[k]) return; l.splice(
   if(await save("courses",{home:FQ,items:l,by:S.me,at:Date.now()},FQ)){ const d=S.courses.find(x=>x.id===FQ); if(d) d.items=l; render(); } }
 BIND_PLUS.push(root=>{ root.querySelectorAll("[data-frsansloc]").forEach(b=>b.onclick=()=>frSansLocBasculer(+b.dataset.frsansloc)); if(root.querySelector&&!root.querySelector("#fr-page")){ root.querySelectorAll("[data-frinv]").forEach(b=>b.onclick=()=>frInvForm(b.dataset.frinv?S.fr_inventaire.find(x=>x.id===b.dataset.frinv):null,b.dataset.piece||"")); root.querySelectorAll("[data-frpieces]").forEach(b=>b.onclick=frPiecesForm); root.querySelectorAll("[data-frverif]").forEach(b=>b.onclick=()=>frVerif(b.dataset.frverif)); const ff=root.querySelector("#fr-invf"); if(ff) ff.onchange=()=>{ S.frInvF=ff.checked?"1":""; render(); }; } root.querySelectorAll("[data-fq]").forEach(b=>b.onclick=()=>{ const [k,a]=b.dataset.fq.split(":");
   ({inv:fqInventaire,maison:fqMaison,depart:fqDepart,ajout:fqAjout,ouvrir:()=>fqOuvrir(a),raye:()=>fqRaye(+a)}[k]||(()=>{}))(); }); });
+/* ---------- Nos séjours à l'hôtel et l'avis service par service (préfixe hs) ---------- */ /* Un séjour passé = un document sorties {type:"hotel", ref:<id de l'hôtel>, nom, lieu, home, date (arrivée), depart, montant (prix payé), personnes, qui, photos, avis:{membre:{stars, mot, services:{cle:1-5}, at}}, by, at}. La réservation en cours reste sur la fiche de l'hôtel (arrivee, prix, prixFinal, avis.services pour son séjour). */
+const HS_SERVICES=[["accueil","Accueil"],["chambre","Chambre"],["literie","Literie"],["proprete","Propreté"],["calme","Calme"],["petitdej","Petit-déjeuner"],["restaurant","Restaurant, bar"],["equipements","Piscine, spa, parking, borne"],["emplacement","Emplacement"],["qualitePrix","Rapport qualité-prix"]];
+function hsGrille(id,val){ val=val||{};
+  return `<div class="door" style="background:var(--bg);display:grid;gap:6px" id="${id}"><b>Service par service</b><span class="hint">Touche les étoiles ; laisse vide ce que vous n'avez pas utilisé.</span>
+    ${HS_SERVICES.map(([k,l])=>`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;border-top:1px dashed var(--line);padding-top:4px"><span style="font-size:14px;font-weight:600">${esc(l)}</span>
+      <span style="white-space:nowrap">${[1,2,3,4,5].map(n=>`<button type="button" data-hsv="${k}:${n}" aria-label="${esc(l)} : ${n} sur 5" style="font-size:22px;color:var(--accent);border:0;background:none;padding:0 1px;min-width:28px;min-height:36px">${(+val[k]||0)>=n?"★":"☆"}</button>`).join("")}</span></div>`).join("")}</div>`; }
+function hsLier(bg,id,val){ const g=bg.querySelector("#"+id); if(!g) return;
+  g.querySelectorAll("[data-hsv]").forEach(b=>b.onclick=()=>{ const [k,n]=b.dataset.hsv.split(":"); val[k]=+val[k]===+n?0:+n; if(!val[k]) delete val[k];
+    g.querySelectorAll(`[data-hsv^="${k}:"]`).forEach(x=>x.textContent=(+val[k]||0)>=+x.dataset.hsv.split(":")[1]?"★":"☆"); }); }
+/* Moyenne par service sur tous les avis donnés (fiche de l'hôtel et séjours passés). */
+function hsMoyennes(h){ const l=[h.avis||{},...S.sorties.filter(s=>s.type==="hotel"&&s.ref===h.id).map(s=>s.avis||{})].flatMap(a=>Object.values(a)).map(a=>(a&&a.services)||{});
+  return HS_SERVICES.map(([k,lib])=>{ const v=l.map(s=>+s[k]).filter(Boolean); return v.length?{k,lib,m:Math.round(v.reduce((a,b)=>a+b,0)/v.length*10)/10}:null; }).filter(Boolean); }
+function hsResume(h){ const m=hsMoyennes(h); if(!m.length) return "";
+  return `<div class="pick" style="gap:6px">${m.map(x=>`<span class="tag" style="${x.m<3?"background:color-mix(in srgb,var(--warn) 22%,var(--door))":x.m>=4.5?"background:color-mix(in srgb,var(--ok) 20%,var(--door))":""}">${esc(x.lib)} <b>${String(x.m).replace(".",",")}</b>★</span>`).join("")}</div>`; }
+function hsPassagesHtml(h){
+  const v=S.sorties.filter(s=>s.type==="hotel"&&s.ref===h.id).sort((a,b)=>(b.date||"").localeCompare(a.date||""));
+  const res=hsResume(h);
+  if(!v.length&&!res) return "";
+  return `<div style="border-top:1px dashed var(--line);padding-top:10px;display:grid;gap:12px">
+    ${v.length?`<b style="font-size:14px">Nos séjours · ${v.length}</b>`:""}
+    ${v.map(s=>{ const n=s.depart&&s.date?fjNuits(s.date,s.depart):0, px=nb(s.montant), notes=Object.values(s.avis||{}).map(a=>+a.stars).filter(Boolean), moy=notes.length?notes.reduce((a,b)=>a+b,0)/notes.length:0;
+      return `<div style="display:grid;gap:6px">
+        <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><span><b>${esc(fmtD(s.date,{day:"numeric",month:"short",year:"numeric"}))}</b>${s.depart?" → "+esc(fmtD(s.depart,{day:"numeric",month:"short"})):""}${n?` <span class="muted">· ${n} nuit${n>1?"s":""}</span>`:""}${moy?` <span style="color:var(--accent)">${stars(Math.round(moy))}</span>`:""}</span>
+          <span>${px?`<b>${esc(eur(px))}</b>${n?` <span class="muted">· ${esc(eur(px/n))} la nuit</span>`:""}`:""}</span></div>
+        ${photosHtml(s.photos,true)}${impressionsHtml(s.avis)}
+        <div class="row" style="gap:6px"><button class="react" data-hspass="${esc(h.id)}:${esc(s.id)}">${(s.avis||{})[S.me]?"Modifier ce séjour":"Mon avis sur ce séjour"}</button></div></div>`; }).join("")}
+    ${res?`<div style="display:grid;gap:4px"><b style="font-size:14px">Les services, d'après nos avis</b>${res}</div>`:""}</div>`; }
+function formPassage(hId,s0){
+  const h=S.hotels.find(x=>x.id===hId); if(!h) return;
+  const s=JSON.parse(JSON.stringify(s0||{type:"hotel",ref:hId,date:"",depart:"",personnes:+h.personnes||2,photos:[],avis:{},qui:[S.me]}));
+  s.photos=s.photos||[]; s.avis=s.avis||{};
+  const mien=s.avis[S.me]||{}; let st=+mien.stars||0; const serv={...(mien.services||{})};
+  const bg=sheet(`<h2>${esc(h.name)}</h2><p class="muted" style="margin:0">${s0?"Le séjour du "+esc(fmtD(s.date,{day:"numeric",month:"long",year:"numeric"})):"Un séjour qu'on y a fait : les dates, le prix payé et notre avis."}</p>
+  <form id="f" style="display:grid;gap:14px">
+  <div class="row"><label>Arrivée<input type="date" id="hp-a" required value="${esc(s.date||"")}"></label><label>Départ<input type="date" id="hp-d" value="${esc(s.depart||"")}"></label>
+    <label>Personnes<input id="hp-p" inputmode="numeric" value="${esc(String(s.personnes||2))}"></label></div>
+  <label>Prix payé (€) <span class="hint">total, avec la taxe de séjour et les extras</span><input id="hp-m" inputmode="decimal" value="${esc(String(s.montant||"").replace(".",","))}" placeholder="Ex. 245"></label>
+  <label>Qui était là ?</label>${peoplePicker("hp-qui",MEMBERS,s.qui||[S.me])}
+  <div class="door" style="background:var(--bg);display:grid;gap:10px"><b>Notre note</b>
+    <div class="pick" style="gap:4px">${[1,2,3,4,5].map(n=>`<button type="button" data-hpst="${n}" aria-label="${n} étoile${n>1?"s":""}" style="font-size:30px;color:var(--accent);border:0;background:none;padding:0 2px">${st>=n?"★":"☆"}</button>`).join("")}</div>
+    <textarea id="hp-mot" maxlength="500" placeholder="Ex. chambre spacieuse, petit-déjeuner copieux, borne de recharge en panne">${esc(mien.mot||"")}</textarea></div>
+  ${hsGrille("hp-sv",serv)}
+  <div class="door" style="background:var(--bg);display:grid;gap:10px"><b>📷 Les photos</b>
+    <div class="row" style="gap:8px"><label class="btn ghost" for="hp-ch" style="flex:none;cursor:pointer">La chambre</label><input id="hp-ch" type="file" accept="image/*" style="display:none">
+      <label class="btn ghost" for="hp-am" style="flex:none;cursor:pointer">L'ambiance</label><input id="hp-am" type="file" accept="image/*" style="display:none"></div>
+    <div id="hp-phs"></div><span class="hint" id="hp-st">Jusqu'à 6 photos.</span></div>
+  <div class="row"><button type="button" class="btn ghost" data-close>Annuler</button><button class="btn accent">Enregistrer</button>
+    ${s0&&s0.by===S.me?`<button type="button" class="react" data-del="sorties:${esc(s0.id)}">Retirer</button>`:""}</div></form>`);
+  bindPicker(bg,"hp-qui"); hsLier(bg,"hp-sv",serv);
+  const q=id=>bg.querySelector(id);
+  bg.querySelectorAll("[data-hpst]").forEach(b=>b.onclick=()=>{ st=+b.dataset.hpst; bg.querySelectorAll("[data-hpst]").forEach(x=>x.textContent=st>=+x.dataset.hpst?"★":"☆"); });
+  q("#hp-a").onchange=()=>{ if(q("#hp-a").value&&(!q("#hp-d").value||q("#hp-d").value<=q("#hp-a").value)) q("#hp-d").value=fjAdd(q("#hp-a").value,1); };
+  const draw=()=>{ q("#hp-phs").innerHTML=photosHtml(s.photos,true)+(s.photos.length?`<button type="button" class="react" id="hp-raz" style="margin-top:6px">Retirer la dernière photo</button>`:"");
+    const rz=q("#hp-raz"); if(rz) rz.onclick=()=>{ s.photos.pop(); draw(); }; };
+  draw();
+  const ajoute=quoi=>async e=>{ const f=e.target.files&&e.target.files[0]; e.target.value=""; if(!f) return;
+    if(s.photos.length>=6){ q("#hp-st").textContent="Six photos maximum."; return; }
+    const u=await shotUrl(f,640,.72); if(u){ s.photos.push({url:u,quoi,par:S.me}); draw(); } };
+  q("#hp-ch").onchange=ajoute("chambre"); q("#hp-am").onchange=ajoute("ambiance");
+  q("#f").onsubmit=async e=>{ e.preventDefault();
+    s.avis[S.me]={stars:st,mot:q("#hp-mot").value.trim(),services:serv,at:Date.now()};
+    const d={type:"hotel",ref:hId,nom:h.name,lieu:h.city||"",home:s.home||h.home||myHome(),date:q("#hp-a").value||todayIso(),depart:q("#hp-d").value||"",montant:nb(q("#hp-m").value),
+      personnes:+q("#hp-p").value||1,qui:picked(bg,"hp-qui"),photos:s.photos,avis:s.avis,by:s.by||S.me,at:s.at||Date.now()};
+    if(s0){ try{ await S.db.collection("sorties").doc(s0.id).set(d); closeSheet(); toast("Séjour enregistré"); }catch{ toast("Pas enregistré."); } return; }
+    if(await save("sorties",d)){ closeSheet(); toast("Séjour noté"+(d.montant?" · "+eur(d.montant):""));
+      if(st) setTimeout(()=>laisserAvis(h.name,h.adresse||h.city,s.avis[S.me].mot,st),500); } };
+}
+BIND_PLUS.push(root=>{ root.querySelectorAll("[data-hspass]").forEach(b=>b.onclick=()=>{ const [h,s]=b.dataset.hspass.split(":"); formPassage(h,s?S.sorties.find(x=>x.id===s):null); }); });
 /* ---------- Rendu ---------- */
 function bindCommon(root){
   root.querySelectorAll("[data-add]").forEach(b=>b.onclick=()=>{ const [k,arg]=b.dataset.add.split(":");
