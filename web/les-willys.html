@@ -7888,6 +7888,34 @@ BIND_PLUS.push(root=>{
   const bp=root.querySelector("#k72-plan"); if(bp) bp.onclick=async()=>{ const pl={}; root.querySelectorAll("[data-k72plan]").forEach(i=>pl[i.dataset.k72plan]=i.value.trim()); if(await k72Ecrire(f,{plan:pl})) toast("Plan enregistré"); };
   const bt=root.querySelector("#k72-test"); if(bt) bt.onclick=async()=>{ const te={date:root.querySelector("#k72-td").value,duree:root.querySelector("#k72-tl").value.trim(),bilan:root.querySelector("#k72-tb").value.trim()}; if(await k72Ecrire(f,{test:te})) toast("Essai noté"); };
   const bn=root.querySelector("#k72-nok"); if(bn) bn.onclick=async()=>{ const v=root.querySelector("#k72-n").value.trim(); if(!v) return; if(await save("kit72notes",{texte:v,foyer:f,by:S.me,at:Date.now()})) toast("Partagé avec la famille"); }; });
+/* ---------- L'app évolue (préfixe evo) ---------- */ /* Collection evolutions : {titre, pourquoi, quoi, effort:"petit"|"moyen"|"grand", statut:"propose"|"oui"|"plustard"|"non"|"encours"|"fait", propose (AAAA-MM-JJ), decidePar, decideLe, faitLe, note}.
+   Une tâche planifiée propose chaque semaine des idées et construit celles que Chouchou ou Loulou ont acceptées ; « Quoi de neuf » garde l'historique. */
+plusColl("evolutions",(a,b)=>(b.propose||"").localeCompare(a.propose||""));
+const EVO_ICO='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l2.4 5.6L20 10l-5.6 2.4L12 18l-2.4-5.6L4 10l5.6-2.4z"/><path d="M19 17l.8 1.8L22 20l-2.2.8L19 23l-.8-2.2L16 20l2.2-1.2z"/></svg>';
+const evoPeut = () => ["chouchou","loulou"].includes(S.me);
+TUILES_PLUS.push(()=>{ const l=S.evolutions||[], a=l.filter(x=>x.statut==="propose").length, n=l.filter(x=>x.statut==="fait"&&x.faitLe&&daysSince(x.faitLe)<=7).length;
+  return {r:"evolutions",t:"L'app évolue",c:"var(--m-loulou)",ico:EVO_ICO,b:a&&evoPeut()?String(a):n?"neuf":"",p:esc(a?agPl(a,"idée à choisir","idées à choisir"):n?agPl(n,"nouveauté cette semaine","nouveautés cette semaine"):"Idées et nouveautés")}; });
+function renderEvolutions(){
+  const l=S.evolutions||[], prop=l.filter(x=>x.statut==="propose"), encours=l.filter(x=>x.statut==="oui"||x.statut==="encours"), faits=l.filter(x=>x.statut==="fait").sort((a,b)=>(b.faitLe||"").localeCompare(a.faitLe||"")), plus=l.filter(x=>x.statut==="plustard");
+  const eff={petit:"vite fait",moyen:"quelques jours",grand:"gros chantier"};
+  const carte=(x,boutons)=>`<div class="fs-opt" style="grid-template-columns:minmax(0,1fr)"><div style="min-width:0;display:grid;gap:4px">
+    <div class="fs-oh"><b>✨ ${esc(x.titre||"")}</b>${x.effort?`<span class="fs-st">${esc(eff[x.effort]||x.effort)}</span>`:""}${x.statut==="fait"&&x.faitLe?`<span class="fs-st fs-libre">fait le ${esc(fmtD(x.faitLe,{day:"numeric",month:"short"}))}</span>`:""}${x.statut==="oui"||x.statut==="encours"?`<span class="fs-st fs-pris">${x.statut==="encours"?"en construction":"accepté"}</span>`:""}</div>
+    ${x.pourquoi?`<div style="font-size:14px">${esc(x.pourquoi)}</div>`:""}${x.quoi?`<div class="hint">${esc(x.quoi)}</div>`:""}${x.note?`<div class="hint">📝 ${esc(x.note)}</div>`:""}
+    ${boutons&&evoPeut()?`<div class="row" style="gap:6px"><button class="react" data-evo="${esc(x.id)}:oui" style="flex:none">👍 Oui, fais-le</button><button class="react" data-evo="${esc(x.id)}:plustard" style="flex:none">Plus tard</button><button class="react" data-evo="${esc(x.id)}:non" style="flex:none">Non merci</button></div>`:""}</div></div>`;
+  return `${pageTete("Les idées de Claude, vos choix","L'app évolue")}
+  <div class="door" style="margin-top:12px"><div class="section-head"><h3>À choisir</h3><span class="cnt">${prop.length}</span></div>
+    <p class="hint" style="margin:2px 0 6px">Chaque semaine, de nouvelles idées pour l'app. ${evoPeut()?"Touche « Oui, fais-le » : c'est construit la semaine suivante, puis ça apparaît dans « Quoi de neuf ».":"Chouchou et Loulou choisissent ; dis-leur ce qui te plairait."}</p>
+    <div class="fs-ops">${prop.map(x=>carte(x,true)).join("")||`<p class="hint" style="margin:6px 0">Pas d'idée en attente : les prochaines arrivent lundi.</p>`}</div>
+    ${evoPeut()?`<div class="row" style="gap:6px;margin-top:8px"><input id="evo-n" placeholder="Ton idée à toi : ex. un rappel pour l'anniversaire de mariage" style="flex:3"><button class="btn accent" style="flex:none" id="evo-ok">Proposer</button></div>`:""}</div>
+  ${encours.length?`<div class="door" style="margin-top:12px"><h3>En construction</h3><div class="fs-ops">${encours.map(x=>carte(x,false)).join("")}</div></div>`:""}
+  <div class="door" style="margin-top:12px"><h3>Quoi de neuf</h3><div class="fs-ops">${faits.slice(0,30).map(x=>carte(x,false)).join("")||`<p class="hint" style="margin:6px 0">L'historique des nouveautés s'affichera ici.</p>`}</div></div>
+  ${plus.length?`<div class="door" style="margin-top:12px"><details><summary style="cursor:pointer;font-weight:700">Gardé pour plus tard · ${plus.length}</summary><div class="fs-ops">${plus.map(x=>carte(x,true)).join("")}</div></details></div>`:""}`; }
+plusRoute("evolutions",renderEvolutions,"L'app évolue","regarde les idées pour l'app");
+BIND_PLUS.push(root=>{
+  root.querySelectorAll("[data-evo]").forEach(b=>b.onclick=async()=>{ const [id,st]=b.dataset.evo.split(":"); if(!S.db){ toast("Connecte-toi à claude.ai pour enregistrer."); return; }
+    try{ await S.db.collection("evolutions").doc(id).update({statut:st,decidePar:S.me,decideLe:todayIso()}); const x=S.evolutions.find(v=>v.id===id); if(x) Object.assign(x,{statut:st}); toast(st==="oui"?"Noté : ce sera construit":st==="non"?"Écarté":"Gardé pour plus tard"); render(); }catch{ toast("Pas enregistré."); } });
+  const ok=root.querySelector("#evo-ok"); if(ok) ok.onclick=async()=>{ const v=root.querySelector("#evo-n").value.trim(); if(!v) return;
+    if(await save("evolutions",{titre:v,pourquoi:"Idée de "+(M[S.me]?M[S.me].n:"la famille")+".",quoi:"",effort:"",statut:"oui",propose:todayIso(),decidePar:S.me,decideLe:todayIso(),by:S.me,at:Date.now()})) toast("Merci ! Claude s'en occupe"); }; });
 /* ---------- Rendu ---------- */
 function bindCommon(root){
   root.querySelectorAll("[data-add]").forEach(b=>b.onclick=()=>{ const [k,arg]=b.dataset.add.split(":");
