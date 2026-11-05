@@ -112,8 +112,12 @@ struct FormulaireIdee: View {
     let moi: String
     @Environment(\.modelContext) private var ctx
     @Environment(\.dismiss) private var fermer
-    @State private var titre = "", quand = "", prix = "", lien = "", photo = "", note = ""
-
+    @State private var titre = ""
+    @State private var quand = ""
+    @State private var prix = ""
+    @State private var lien = ""
+    @State private var photo = ""
+    @State private var note = ""
     var body: some View {
         let voyage = genre == "voyage"
         Form {
@@ -145,18 +149,25 @@ struct FormulaireArticle: View {
     var rangement: Rangement = .frais
     @Environment(\.modelContext) private var ctx
     @Environment(\.dismiss) private var fermer
-    @State private var nom = "", quantite = "", categorie = "legumes", prix = "", bonJours = ""
+    @State private var nom = ""
+    @State private var quantite = ""
+    @State private var categorie = "legumes"
+    @State private var prix = ""
+    @State private var bonJours = ""
     @State private var depuis = Date.now
     @State private var peremption = Date.now.addingTimeInterval(30 * 86400)
     @State private var avecPeremption = false
     @State private var ou: Rangement = .frais
+
+    /// Pour les armoires on propose conserves, épicerie, boissons… ; pour le frais, légumes, crèmerie…
+    private var categoriesProposees: [String] { Categorie.attendues(dans: ou.rawValue) }
 
     var body: some View {
         Form {
             Picker("Où ?", selection: $ou) { ForEach(Rangement.allCases) { Text($0.libelle).tag($0) } }.pickerStyle(.segmented)
             TextField("Nom — ex. Haché porc et bœuf", text: $nom)
             TextField("Quantité — ex. 500 g", text: $quantite)
-            Picker("Catégorie", selection: $categorie) { ForEach(Categorie.toutes, id: \.id) { Text($0.nom).tag($0.id) } }
+            Picker("Catégorie", selection: $categorie) { ForEach(categoriesProposees, id: \.self) { Text(Categorie.nom($0)).tag($0) } }
             DatePicker(ou == .surgelateur ? "Congelé le" : "Acheté le", selection: $depuis, displayedComponents: .date)
             if ou == .frais {
                 TextField("Bon pendant (jours) — sinon \(Categorie.joursFrais[categorie] ?? 4)", text: $bonJours).keyboardType(.numberPad)
@@ -173,7 +184,10 @@ struct FormulaireArticle: View {
         }
         .environment(\.locale, Locale(identifier: "fr_BE"))
         .navigationTitle("Ranger")
-        .onAppear { ou = rangement }
+        .onAppear { ou = rangement; if !categoriesProposees.contains(categorie) { categorie = categoriesProposees.first ?? "autre" } }
+        .onChange(of: ou) { _, _ in
+            if !categoriesProposees.contains(categorie) { categorie = categoriesProposees.first ?? "autre" }
+        }
         .toolbar {
             ToolbarItem(placement: .cancellationAction) { Button("Annuler") { fermer() } }
             ToolbarItem(placement: .confirmationAction) {

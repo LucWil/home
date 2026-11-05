@@ -20,15 +20,36 @@ struct ChezNousView: View {
 
     var body: some View {
         List {
+            Section {
+                NavigationLink { WeekendMaisonView() } label: {
+                    Label("Week-end à la maison · 8 h + 4 h", systemImage: "hammer")
+                }
+            } footer: { Text("Planifie tes tâches et tes peintures : l'écran dit quand chacune sera finie.") }
+
+            Section {
+                NavigationLink { PresDeChezNousView(moi: moi) } label: {
+                    Label("Près de chez nous : marchés, activités, pharmacie de garde", systemImage: "location.north.circle")
+                }
+                NavigationLink { FrejusPlacardsView(moi: moi) } label: {
+                    Label("Les placards de Fréjus", systemImage: "sun.max")
+                }
+            } footer: { Text("Armoires, frigo, congélateur, vaisselle : l'inventaire à l'arrivée, le départ, et ce qu'il faut racheter.") }
+
+            partage
+
             Section("Le jardin") {
                 let recoltes = de("harvest")
                 let grammes = recoltes.reduce(0.0) { $0 + $1.nombre("g") }
                 let valeur = recoltes.reduce(0.0) { $0 + $1.nombre("g") / 1000 * $1.nombre("pricekg") }
                 let heures = de("work").reduce(0.0) { $0 + $1.nombre("h") }
-                HStack {
-                    Stat(valeur: String(format: "%.1f kg", grammes / 1000), libelle: "récoltés")
-                    Stat(valeur: valeur.euros, libelle: "économisés")
-                    Stat(valeur: String(format: "%.0f h", heures), libelle: "au jardin")
+                // trois chiffres côte à côte, ou l'un sous l'autre quand le texte est agrandi
+                ViewThatFits(in: .horizontal) {
+                    HStack { statsJardin(grammes, valeur, heures) }
+                    VStack(alignment: .leading, spacing: 10) { statsJardin(grammes, valeur, heures) }
+                }
+                if recoltes.isEmpty && de("garden").isEmpty {
+                    ContentUnavailableView("Le potager attend", systemImage: "leaf",
+                        description: Text("Les récoltes et les heures passées au jardin, reprises de l'app web, apparaîtront ici."))
                 }
                 ForEach(Array(recoltes.prefix(15).enumerated()), id: \.offset) { _, r in
                     HStack {
@@ -42,8 +63,6 @@ struct ChezNousView: View {
                     HStack { Image(systemName: "leaf"); Text(g.s("name", g.s("nom"))); Spacer(); Text(g.s("date")).font(.willys(.caption)).foregroundStyle(.secondary) }
                 }
             }
-
-            partage
 
             Section {
                 Button { importer = true } label: { Label("Reprendre une sauvegarde de l'app web", systemImage: "square.and.arrow.down") }
@@ -78,6 +97,12 @@ struct ChezNousView: View {
 }
 
 extension ChezNousView {
+    @ViewBuilder fileprivate func statsJardin(_ grammes: Double, _ valeur: Double, _ heures: Double) -> some View {
+        Stat(valeur: String(format: "%.1f kg", grammes / 1000), libelle: "récoltés")
+        Stat(valeur: valeur.euros, libelle: "économisés")
+        Stat(valeur: String(format: "%.0f h", heures), libelle: "au jardin")
+    }
+
     /// La maison commune iCloud : Chouchou invite, les autres acceptent le lien une seule fois.
     @ViewBuilder var partage: some View {
         Section {
@@ -104,7 +129,7 @@ extension ChezNousView {
                     Label("Inviter la famille", systemImage: "person.badge.plus")
                 }
             }
-            Toggle(isOn: Binding(get: { alertes }, set: { alertes = $0; Alertes.actives = $0 })) {
+            Toggle(isOn: Binding(get: { alertes }, set: { alertes = $0; Alertes.actives = $0; if $0 { Task { await Alertes.demanderAutorisation() } } })) {
                 Label("Me prévenir quand quelqu'un range, mange ou prévoit quelque chose", systemImage: "bell.badge")
             }
             .tint(Theme.ok)
@@ -114,7 +139,7 @@ extension ChezNousView {
         } header: { Text("Partage familial") } footer: {
             Text(synchro.estProprietaire
                  ? "La maison commune est dans ton iCloud. « Inviter la famille » envoie un lien à chacun ; ils n'ont qu'à le toucher une fois. Les IBAN restent sur cet appareil."
-                 : "Toutes les données sont dans l'iCloud de Chouchou et partagées avec les huit membres. Accepter l'invitation une fois suffit pour l'iPhone et l'iPad.")
+                 : "Toutes les données sont dans l'iCloud de Chouchou et partagées avec toute la famille. Accepter l'invitation une fois suffit pour l'iPhone et l'iPad.")
         }
     }
 }
@@ -128,5 +153,6 @@ struct Stat: View {
             Text(libelle).font(.willys(.caption)).foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
     }
 }

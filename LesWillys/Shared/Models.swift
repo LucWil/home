@@ -66,6 +66,7 @@ import SwiftData
     var peremption: String? = nil           // armoires : à consommer avant le
     var prix: Double = 0
     var tiroir: Int? = nil
+    var verifie: String? = nil             // vu au dernier inventaire (Fréjus) le
     var par: String = ""
     var cree: Date = Date.now
 
@@ -102,7 +103,7 @@ import SwiftData
 }
 
 @Model final class Foyer {
-    var cle: String = ""                 // "luc", "mj", "ambre", "robin"
+    var cle: String = ""                 // "luc", "mj", "ambre"
     var nom: String = ""
     var objectifLibelle: String = ""
     var objectifMontant: Double = 0
@@ -192,7 +193,10 @@ extension DocumentBrut: AvecCle {}
 enum Schema_ {
     static let modeles: [any PersistentModel.Type] = [
         Evenement.self, Idee.self, Reaction.self, Article.self, Boni.self, Foyer.self,
-        Recette.self, Photo.self, Visite.self, DocumentBrut.self, Activite.self,
+        Recette.self, Photo.self, Visite.self, DocumentBrut.self, Activite.self, TacheMaison.self,
+        Restaurant.self, Sortie.self, Hotel.self, PhotoLoisir.self,
+        ObjetMaison.self, ARacheter.self,
+        Etape.self,
     ]
 }
 

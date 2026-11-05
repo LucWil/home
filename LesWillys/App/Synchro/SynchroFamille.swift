@@ -26,7 +26,12 @@ final class SynchroFamille: ObservableObject {
     @Published private(set) var derniereSynchro: Date?
 
     static let nomZone = "Willys"
-    let conteneur = CKContainer(identifier: Base.iCloud)
+    /// Créé seulement quand l'app a vraiment accès à iCloud : sans signature (simulateur, compilation
+    /// GitHub), ouvrir le conteneur fait planter l'app au lancement.
+    lazy var conteneur = CKContainer(identifier: Base.iCloud)
+    static var iCloudDisponible: Bool {
+        FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: Base.groupe) != nil
+    }
     private var moteur: CKSyncEngine?
     private var delegue: Delegue?
 
@@ -46,6 +51,7 @@ final class SynchroFamille: ObservableObject {
 
     func demarrer() async {
         guard moteur == nil, Base.moi != nil else { return }
+        guard Self.iCloudDisponible else { etat = .pasDeCompteICloud; return }
         guard (try? await conteneur.accountStatus()) == .available else { etat = .pasDeCompteICloud; return }
 
         let base = estProprietaire ? conteneur.privateCloudDatabase : conteneur.sharedCloudDatabase
@@ -60,6 +66,7 @@ final class SynchroFamille: ObservableObject {
             moteur.state.add(pendingDatabaseChanges: [.saveZone(CKRecordZone(zoneID: zoneID))])
         }
         etat = zoneID == nil ? .enAttenteInvitation : .pret
+        rattraperTachesMaison()
         envoyerFile()
         try? await moteur.fetchChanges()
     }
@@ -76,6 +83,16 @@ final class SynchroFamille: ObservableObject {
         if !changements.isEmpty { moteur.state.add(pendingRecordZoneChanges: changements) }
     }
 
+    /// Les tâches du week-end créées avant leur branchement sur iCloud restaient sur l'appareil :
+    /// on les envoie une fois, au premier lancement de cette version.
+    private func rattraperTachesMaison() {
+        let cle = "synchro.tachesMaison.v1"
+        guard !Base.reglages.bool(forKey: cle) else { return }
+        let taches = (try? Base.app.mainContext.fetch(FetchDescriptor<TacheMaison>())) ?? []
+        FileSynchro.ajouter(taches.map { "save:" + $0.nomEnregistrement })
+        Base.reglages.set(true, forKey: cle)
+    }
+
     /// Met tout le contenu local dans la file (après avoir rejoint la maison commune).
     func toutEnvoyer() {
         let ctx = Base.app.mainContext
@@ -86,6 +103,9 @@ final class SynchroFamille: ObservableObject {
         ajouter(Evenement.self); ajouter(Idee.self); ajouter(Reaction.self); ajouter(Article.self); ajouter(Boni.self)
         ajouter(Foyer.self); ajouter(Recette.self); ajouter(Photo.self); ajouter(Visite.self); ajouter(DocumentBrut.self)
         ajouter(Activite.self)
+        ajouter(Restaurant.self); ajouter(Sortie.self); ajouter(Hotel.self); ajouter(PhotoLoisir.self)
+        ajouter(TacheMaison.self); ajouter(ObjetMaison.self); ajouter(ARacheter.self)
+        ajouter(Etape.self)
         FileSynchro.ajouter(lignes)
         envoyerFile()
     }
@@ -225,6 +245,14 @@ final class SynchroFamille: ObservableObject {
         case Visite.typeEnregistrement: return chercher(Visite.self)
         case DocumentBrut.typeEnregistrement: return chercher(DocumentBrut.self)
         case Activite.typeEnregistrement: return chercher(Activite.self)
+        case Restaurant.typeEnregistrement: return chercher(Restaurant.self)
+        case Sortie.typeEnregistrement: return chercher(Sortie.self)
+        case Hotel.typeEnregistrement: return chercher(Hotel.self)
+        case PhotoLoisir.typeEnregistrement: return chercher(PhotoLoisir.self)
+        case TacheMaison.typeEnregistrement: return chercher(TacheMaison.self)
+        case ObjetMaison.typeEnregistrement: return chercher(ObjetMaison.self)
+        case ARacheter.typeEnregistrement: return chercher(ARacheter.self)
+        case Etape.typeEnregistrement: return chercher(Etape.self)
         default: return nil
         }
     }
@@ -243,6 +271,14 @@ final class SynchroFamille: ObservableObject {
         case Photo.typeEnregistrement: let p = Photo(legende: "", qui: [], par: ""); p.cle = id; o = p
         case Visite.typeEnregistrement: o = Visite(membre: id)
         case Activite.typeEnregistrement: let a = Activite(membre: "", genre: "", onglet: "accueil", detail: ""); a.cle = id; o = a
+        case Restaurant.typeEnregistrement: let r = Restaurant(nom: "", ville: "", par: ""); r.cle = id; o = r
+        case Sortie.typeEnregistrement: let s = Sortie(ref: "", nom: "", lieu: "", foyer: "", par: ""); s.cle = id; o = s
+        case Hotel.typeEnregistrement: let h = Hotel(nom: "", ville: "", foyer: "", par: ""); h.cle = id; o = h
+        case PhotoLoisir.typeEnregistrement: let p = PhotoLoisir(parent: "", quoi: "", image: nil, par: ""); p.cle = id; o = p
+        case TacheMaison.typeEnregistrement: let t = TacheMaison(titre: "", heures: 1, ordre: 0); t.cle = id; o = t
+        case ObjetMaison.typeEnregistrement: let m = ObjetMaison(objet: "", piece: "", quantite: 1, par: ""); m.cle = id; o = m
+        case ARacheter.typeEnregistrement: let a = ARacheter(nom: "", par: ""); a.cle = id; o = a
+        case Etape.typeEnregistrement: let e = Etape(voyage: "", jour: 1, ordre: 0, titre: "", par: ""); e.cle = id; o = e
         case DocumentBrut.typeEnregistrement:
             let m = id.split(separator: ":", maxSplits: 1).map(String.init)
             o = DocumentBrut(collection: m.first ?? "", cle: m.count > 1 ? m[1] : id, json: Data(), foyer: "")
@@ -252,7 +288,7 @@ final class SynchroFamille: ObservableObject {
         return o
     }
 
-    static func fichier(_ nom: String) -> URL {
+    nonisolated static func fichier(_ nom: String) -> URL {
         let dossier = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: Base.groupe)
             ?? FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         return dossier.appendingPathComponent(nom)

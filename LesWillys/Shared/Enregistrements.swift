@@ -120,13 +120,13 @@ extension Article: Synchronisable {
     func remplir(_ r: CKRecord) {
         r["foyer"] = foyer; r["rangement"] = rangement; r["nom"] = nom; r["quantite"] = quantite
         r["categorie"] = categorie; r["depuis"] = depuis; r["bonJours"] = bonJours; r["peremption"] = peremption
-        r["prix"] = prix; r["tiroir"] = tiroir; r["par"] = par; r["cree"] = cree
+        r["prix"] = prix; r["tiroir"] = tiroir; r["verifie"] = verifie; r["par"] = par; r["cree"] = cree
     }
     func lire(_ r: CKRecord) {
         foyer = r.s("foyer"); rangement = r.s("rangement"); nom = r.s("nom"); quantite = r.s("quantite")
         categorie = r.s("categorie"); depuis = r.s("depuis"); bonJours = r.entier("bonJours")
         peremption = r["peremption"] as? String; prix = r.nombre("prix"); tiroir = r.entier("tiroir")
-        par = r.s("par"); cree = r.date("cree")
+        verifie = r["verifie"] as? String; par = r.s("par"); cree = r.date("cree")
     }
 }
 

@@ -252,6 +252,9 @@ struct TitreSection<Action: View>: View {
         }
     }
 }
+extension TitreSection {
+    init(_ titre: String, @ViewBuilder action: () -> Action) { self.titre = titre; self.action = action() }
+}
 extension TitreSection where Action == EmptyView {
     init(_ titre: String) { self.titre = titre; self.action = EmptyView() }
 }

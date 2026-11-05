@@ -31,9 +31,12 @@ import CloudKit
         case "mot": return "a laissé un mot : « \(detail) »"
         case "evenement": return n > 1 ? "a ajouté \(n) dates au calendrier" : "a ajouté « \(detail) » au calendrier"
         case "voyage": return "propose un voyage : \(detail)"
+        case "etape": return n > 1 ? "a ajouté \(n) étapes au programme d'un voyage" : "a ajouté « \(detail) » au programme du voyage"
         case "weekend": return "propose un week-end : \(detail)"
         case "photo": return n > 1 ? "a ajouté \(n) photos au mur" : "a ajouté une photo au mur"
         case "recette": return "a ajouté la recette « \(detail) »"
+        case "sortie": return "était au restaurant « \(detail) »"
+        case "hotel": return "a noté l'hôtel « \(detail) »"
         case "reaction": return n > 1 ? "a réagi à \(n) idée\(s)" : "a réagi à « \(detail) »"
         default: return detail
         }
@@ -48,9 +51,12 @@ import CloudKit
         case "mot": "note.text"
         case "evenement": "calendar.badge.plus"
         case "voyage": "airplane"
+        case "etape": "mappin.and.ellipse"
         case "weekend": "sun.max"
         case "photo": "photo"
         case "recette": "frying.pan"
+        case "sortie": "fork.knife"
+        case "hotel": "bed.double"
         default: "heart"
         }
     }
@@ -89,8 +95,11 @@ enum Journal {
                 case "voyage": gestes.append(("voyage", "voyages", i.titre))
                 default: gestes.append(("weekend", "weekends", i.titre))
                 }
+            case let e as Etape: gestes.append(("etape", "voyages", e.titre))
             case is Photo: gestes.append(("photo", "accueil", ""))
             case let r as Recette: gestes.append(("recette", "cuisine", r.titre))
+            case let s as Sortie: gestes.append(("sortie", "loisirs", s.nom))
+            case let h as Hotel: gestes.append(("hotel", "loisirs", h.nom))
             case let d as DocumentBrut where d.collection == "waste":
                 gestes.append(("jete", "cuisine", (d.valeurs["name"] as? String) ?? ""))
             default: break
@@ -130,6 +139,7 @@ enum Presence {
         case "voyages": "regarde les voyages"
         case "cuisine": "est dans la cuisine"
         case "weekends": "regarde les week-ends"
+        case "loisirs": "regarde les loisirs"
         case "chez-nous": "est dans Chez nous"
         default: "est sur l'accueil"
         }

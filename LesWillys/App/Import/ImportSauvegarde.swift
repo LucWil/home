@@ -106,6 +106,45 @@ struct ImportSauvegarde {
             }
             ctx.insert(r)
 
+        case "restos":
+            supprimer(Restaurant.self, cle: id)
+            let r = Restaurant(nom: d.s("name"), ville: d.s("city"), par: par)
+            r.cle = id; r.adresse = d.s("adresse"); r.tel = d.s("tel"); r.cuisine = d.s("cuisine"); r.horaires = d.s("horaires")
+            r.site = d.s("site"); r.reserver = d.s("reserver"); r.menuLien = d.s("menuLien"); r.menuNote = d.s("menuNote")
+            r.avisNote = d.nombre("avisNote"); r.avisNb = d.s("avisNb"); r.avisSource = d.s("avisSource"); r.avisResume = d.s("avisResume")
+            r.infosStatut = d.s("infosStatut", "a_chercher"); r.infosMaj = d.s("infosMaj"); r.cree = at
+            r.menu = ((d["menuPlats"] as? [[String: Any]]) ?? []).map { PlatMenu(nom: $0.s("nom"), prix: $0.s("prix"), note: $0.s("note")) }
+            ctx.insert(r)
+
+        case "sorties", "hotels":
+            let photos = (d["photos"] as? [[String: Any]]) ?? []
+            for (n, p) in photos.enumerated() {
+                let u = p.s("url"); guard u.hasPrefix("data:image"), let v = u.firstIndex(of: ",") else { continue }
+                supprimer(PhotoLoisir.self, cle: id + "-" + String(n))
+                let ph = PhotoLoisir(parent: id, quoi: p.s("quoi", "photo"), image: Data(base64Encoded: String(u[u.index(after: v)...])), par: p.s("par", par))
+                ph.cle = id + "-" + String(n); ctx.insert(ph)
+            }
+            var avis: [String: AvisMembre] = [:]
+            for (k, v) in (d["avis"] as? [String: Any]) ?? [:] { if let a = v as? [String: Any] { avis[k] = AvisMembre(stars: a.int("stars") ?? 0, mot: a.s("mot")) } }
+            if collection == "sorties" {
+                supprimer(Sortie.self, cle: id)
+                let s = Sortie(ref: d.s("ref"), nom: d.s("nom"), lieu: d.s("lieu"), foyer: d.s("home"), par: par)
+                s.cle = id; s.type = d.s("type", "resto"); s.date = d.s("date", Jour.aujourdhui); s.montant = d.nombre("montant")
+                s.personnes = d.int("personnes") ?? 2; s.qui = d.liste("qui"); s.avis = avis; s.cree = at
+                ctx.insert(s)
+            } else {
+                supprimer(Hotel.self, cle: id)
+                let h = Hotel(nom: d.s("name"), ville: d.s("city"), foyer: d.s("home"), par: par)
+                h.cle = id; h.adresse = d.s("adresse"); h.tel = d.s("tel"); h.site = d.s("site"); h.arrivee = d.s("arrivee"); h.depart = d.s("depart")
+                h.personnes = d.int("personnes") ?? 2; h.prix = d.nombre("prix"); h.prixFinal = d.nombre("prixFinal")
+                h.confirmation = d.s("confirmation"); h.lienResa = d.s("lienResa"); h.annulation = d.s("annulation"); h.rappel = d.s("rappel")
+                h.options = ((d["options"] as? [String: Any]) ?? [:]).compactMap { ($0.value as? Bool) == true ? $0.key : nil }.sorted()
+                h.note = d.s("note"); h.noteFinale = d.nombre("noteFinale"); h.avis = avis
+                h.avisNote = d.nombre("avisNote"); h.avisNb = d.s("avisNb"); h.avisSource = d.s("avisSource"); h.avisResume = d.s("avisResume")
+                h.infosStatut = d.s("infosStatut", "trouve"); h.cree = at
+                ctx.insert(h)
+            }
+
         case "photos":
             supprimer(Photo.self, cle: id)
             let p = Photo(legende: d.s("legend"), qui: d.liste("who"), par: par)

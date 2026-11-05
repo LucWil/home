@@ -17,12 +17,19 @@ enum Base {
     }
     static var monFoyer: String? { Famille.foyer(de: moi) }
 
-    /// La base SwiftData est locale à l'appareil. La synchronisation entre les huit membres
+    /// La base SwiftData est locale à l'appareil. La synchronisation entre les membres
     /// passe par `SynchroFamille` (CloudKit, zone partagée « Willys »), pas par SwiftData.
     static func conteneur() -> ModelContainer {
         let schema = Schema(Schema_.modeles)
-        let config = ModelConfiguration("LesWillys", schema: schema, groupContainer: .identifier(groupe), cloudKitDatabase: .none)
-        return try! ModelContainer(for: schema, configurations: [config])
+        // SwiftData plante (au lieu de renvoyer une erreur) si l'App Group n'existe pas :
+        // on vérifie d'abord qu'il est là (il manque dans une compilation non signée).
+        if FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: groupe) != nil {
+            let config = ModelConfiguration("LesWillys", schema: schema, groupContainer: .identifier(groupe), cloudKitDatabase: .none)
+            if let c = try? ModelContainer(for: schema, configurations: [config]) { return c }
+        }
+        // Sans App Group (compilation non signée, simulateur) : base locale à l'app seule.
+        let local = ModelConfiguration("LesWillys", schema: schema, groupContainer: .none, cloudKitDatabase: .none)
+        return try! ModelContainer(for: schema, configurations: [local])
     }
 
     @MainActor static let app = conteneur()
@@ -33,10 +40,14 @@ enum Base {
 
 /// Règle du boni : un article mangé quitte le stock et son prix part dans le boni du foyer.
 enum Cuisine {
+    /// À Fréjus, le boni va au foyer de celui qui mange, et ce qui est fini dans les armoires part dans « à racheter ».
     static func manger(_ article: Article, par membre: String, dans ctx: ModelContext) {
+        let aFrejus = article.foyer == Frejus.cle
         if article.prix > 0 {
-            ctx.insert(Boni(foyer: article.foyer, nom: article.nom, valeur: article.prix, par: membre))
+            let foyer = aFrejus ? (Famille.foyer(de: membre) ?? article.foyer) : article.foyer
+            ctx.insert(Boni(foyer: foyer, nom: article.nom, valeur: article.prix, par: membre))
         }
+        if aFrejus && article.rangement == "armoire" { Frejus.aRacheter([article.nom], par: membre, dans: ctx) }
         ctx.delete(article)
         ctx.enregistrer()
     }

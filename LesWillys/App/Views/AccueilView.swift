@@ -8,6 +8,7 @@ struct AccueilView: View {
     @Environment(\.modelContext) private var ctx
     @Environment(\.colorScheme) private var scheme
     @Environment(\.openURL) private var ouvrir
+    @Environment(\.horizontalSizeClass) private var largeur
     @Query(sort: \Evenement.debut) private var evenements: [Evenement]
     @Query(sort: \Idee.cree, order: .reverse) private var idees: [Idee]
     @Query(sort: \Recette.cree, order: .reverse) private var recettes: [Recette]
@@ -24,11 +25,17 @@ struct AccueilView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {
-                banniere
+                // L'ordre de l'accueil : la date et l'agenda du jour, le marché du jour, la maison, puis « À découvrir ».
+                aujourdhui
+                // toutes les 5 minutes : un marché fini disparaît, celui qui ouvre apparaît
+                TimelineView(.periodic(from: .now, by: 300)) { _ in CartePresDeChezNous(moi: moi, partie: .marche) }
+                CarteNotifications()
                 ViewThatFits(in: .horizontal) {
                     HStack(alignment: .top, spacing: 16) { semaine; VStack(spacing: 16) { nouveau; passages } }
                     VStack(spacing: 16) { semaine; nouveau; passages }
                 }
+                CartePresDeChezNous(moi: moi, partie: .decouvrir)
+                banniere
                 filActivite
                 petitsMots
                 mur
@@ -56,13 +63,54 @@ struct AccueilView: View {
 
     // MARK: Bannière
 
+    /// La date du jour et ce qui est à l'agenda aujourd'hui.
+    private var aujourdhui: some View {
+        let t = Jour.aujourdhui
+        let auj = evenements.filter { $0.debut <= t && $0.fin >= t }
+        return VStack(alignment: .leading, spacing: 10) {
+            Text("AUJOURD'HUI").font(.willys(.caption, poids: .heavy)).tracking(1.2).opacity(0.8)
+            Text({ let t = Date.now.formatted(.dateTime.weekday(.wide).day().month(.wide).locale(Locale(identifier: "fr_BE"))); return t.prefix(1).uppercased() + t.dropFirst() }())
+                .font(Theme.titre(28))
+            if auj.isEmpty {
+                Text("Rien à l'agenda aujourd'hui.").font(.willys(.subheadline)).opacity(0.9)
+            }
+            ForEach(auj) { e in
+                HStack(alignment: .top, spacing: 10) {
+                    RoundedRectangle(cornerRadius: 2).fill(e.typeEvenement.couleur).frame(width: 4)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(e.titre).font(.willys(.headline))
+                        Text(e.typeEvenement.libelle + (e.fin > t ? " · jusqu'au \(Jour.joli(e.fin, .dateTime.weekday(.wide).day().month(.wide)))" : ""))
+                            .font(.willys(.caption)).opacity(0.85)
+                    }
+                }
+                .fixedSize(horizontal: false, vertical: true)
+            }
+            HStack {
+                Button("Laisser un mot") { feuille = .mot }.buttonStyle(.borderedProminent).tint(.white).foregroundStyle(Color(hex: 0x1F4F86))
+                Button("Ajouter une date") { feuille = .evenement }.buttonStyle(.bordered).tint(.white)
+            }
+            .buttonBorderShape(.capsule)
+            .font(.willys(.subheadline, poids: .bold))
+        }
+        .foregroundStyle(.white)
+        .padding(18)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(LinearGradient(colors: [Color(hex: 0x2F6FB5), Color(hex: 0x3F8FD0)], startPoint: .topLeading, endPoint: .bottomTrailing),
+                    in: RoundedRectangle(cornerRadius: 24))
+    }
+
     private var banniere: some View {
         let jour = Int(Date.now.timeIntervalSince1970 / 86400)
         let photo = photos.isEmpty ? nil : photos[jour % photos.count]
         let prochain = evenements.first { $0.fin >= Jour.aujourdhui }
-        return HStack(alignment: .center, spacing: 18) {
+        let compact = largeur == .compact
+        // sur iPhone la photo passe au-dessus du texte : côte à côte, tout était à l'étroit
+        let disposition = compact ? AnyLayout(VStackLayout(alignment: .leading, spacing: 14))
+                                  : AnyLayout(HStackLayout(alignment: .center, spacing: 18))
+        return disposition {
             if let photo, let data = photo.image, let ui = UIImage(data: data) {
-                Image(uiImage: ui).resizable().scaledToFill().frame(width: 120, height: 120)
+                Image(uiImage: ui).resizable().scaledToFill()
+                    .frame(maxWidth: compact ? .infinity : 120).frame(height: compact ? 160 : 120)
                     .clipShape(RoundedRectangle(cornerRadius: 16))
                     .overlay(RoundedRectangle(cornerRadius: 16).stroke(.white, lineWidth: 5))
                     .rotationEffect(.degrees(-3)).shadow(radius: 6, y: 6)
@@ -77,9 +125,9 @@ struct AccueilView: View {
                 } else {
                     Text("Pas de rendez-vous prévu : à vous de lancer la prochaine idée !").font(.willys(.subheadline))
                 }
-                HStack {
-                    Button("Laisser un mot") { feuille = .mot }.buttonStyle(.borderedProminent)
-                    Button("Ajouter une photo") { feuille = .photo }.buttonStyle(.bordered)
+                ViewThatFits(in: .horizontal) {
+                    HStack { boutonsBanniere }
+                    VStack(alignment: .leading) { boutonsBanniere }
                 }
             }
         }
@@ -88,6 +136,11 @@ struct AccueilView: View {
         .background(LinearGradient(colors: [Theme.accent.opacity(0.3), Famille.membre("loulou")!.couleur.opacity(0.15)],
                                    startPoint: .topLeading, endPoint: .bottomTrailing),
                     in: RoundedRectangle(cornerRadius: 22))
+    }
+
+    @ViewBuilder private var boutonsBanniere: some View {
+        Button("Laisser un mot") { feuille = .mot }.buttonStyle(.borderedProminent)
+        Button("Ajouter une photo") { feuille = .photo }.buttonStyle(.bordered)
     }
 
     // MARK: Cette semaine
