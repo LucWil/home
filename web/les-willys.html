@@ -1356,6 +1356,9 @@ function locBloc(y){
         ${adm?`<button class="react" data-del="locations:${esc(l.id)}">Supprimer</button>`:""}</div></div></div>`; };
   return `<div class="door fs-bloc" id="fs-louer"><div class="eyebrow">La petite maison · Domaine des Pins · terrasse, piscine</div>
     <div class="section-head"><h3>Louer la maison</h3><button class="btn accent" style="flex:none" data-locnew="1">Nouvelle demande</button></div>
+    ${(()=>{ const an=+t.slice(0,4); return frSansLoc(an)?`<div class="fs-rappel" style="border-color:var(--sc-fj);background:color-mix(in srgb,var(--sc-fj) 10%,var(--door))">🏖️ <b>Pas de location en ${an}</b> : la maison reste à la famille. Pas de loyers, pas de taxe de séjour à reverser, pas de déclaration française de revenus de location pour ${an}.
+      ${adm?`<div class="row" style="gap:6px;margin-top:6px"><button class="react" data-frsansloc="${an}">Finalement, on loue en ${an}</button></div>`:""}</div>`
+      :adm?`<div class="row" style="gap:6px"><button class="react" data-frsansloc="${an}">Pas de location en ${an}</button></div>`:""; })()}
     ${avenir.filter(l=>l.statut==="confirmee"&&locUrgent(l)).map(l=>`<div class="fs-rappel">⚠️ <b>Problème urgent signalé par ${esc(locNomC(l))}</b> : ${esc(locProbs(l).filter(p=>p.statut==="nouveau"&&p.gravite==="urgent").map(p=>p.texte).join(" · "))}
       <div class="row" style="gap:6px;margin-top:6px"><button class="react" data-locfiche="${esc(l.id)}">Ouvrir la fiche</button></div></div>`).join("")}
     ${frObligRappel()}
@@ -2028,11 +2031,20 @@ const FR_PERIO_MOIS={mensuelle:1,trimestrielle:3,annuelle:12};
 const IMP_TXT="Les loyers de la petite maison sont imposables en France. L'impôt ne se calcule pas sur les loyers seuls : pour les non-résidents, la France applique un taux minimum (20 %, 30 % au-delà d'un certain montant), ou le taux moyen calculé sur l'ensemble de vos revenus mondiaux si c'est plus favorable — il faut alors déclarer tous vos revenus. En Belgique, ces revenus sont aussi à déclarer : ils sont en principe exonérés mais font monter le taux d'impôt sur vos autres revenus. Prévoyez-le et faites valider par un comptable.";
 const impAlerte = () => `<div class="fs-rappel">🧾 <b>Impôt sur les revenus de location</b><br>${esc(IMP_TXT)}<div class="hint" style="margin-top:4px">Informations générales, pas un conseil fiscal.</div></div>`;
 const IMP_DECL=[["FR","Déclarer les revenus de location en France (non-résidents)","dateDeclFR","05-31"],["BE","Déclarer en Belgique (revenus étrangers)","dateDeclBE","07-15"]];
-/* Les revenus de l'année N se déclarent en N+1 ; une fois faite, on passe à l'année suivante */
+/* Les années sans location (meta/frejus-sans-location {annees:[2026,…]}) : ni loyers, ni taxe de séjour, ni déclaration française de revenus de location. */
+const frSansLoc = an => { const d=S.meta.find(x=>x.id==="frejus-sans-location"); return !!(d&&Array.isArray(d.annees)&&d.annees.map(Number).includes(+an)); };
+async function frSansLocBasculer(an){
+  if(!locAdmin()){ toast("Seuls Chouchou et Loulou changent ce réglage."); return; }
+  const d=S.meta.find(x=>x.id==="frejus-sans-location"), l=(d&&Array.isArray(d.annees)?d.annees.map(Number):[]).filter(x=>x!==+an);
+  if(!frSansLoc(an)) l.push(+an);
+  if(await save("meta",{annees:l.sort(),by:S.me,at:Date.now()},"frejus-sans-location")){ if(d) d.annees=l; else S.meta.push({id:"frejus-sans-location",annees:l}); toast(l.includes(+an)?"Pas de location en "+an+" : noté":"Location possible en "+an); render(); } }
+/* Les revenus de l'année N se déclarent en N+1 ; une fois faite, on passe à l'année suivante. Une année sans location n'a pas de déclaration française ;
+   la belge reste (un bien à l'étranger se déclare aussi sans location — à confirmer avec le comptable). */
 function impDecls(){
   const T=locTarifs(), fait=frObligEtat("revenus").declare, y=+todayIso().slice(0,4);
-  return IMP_DECL.map(([k,lib,ch,def])=>{ const jm=tsJour(T[ch])||def; let r=y-1; if(fait[r+"-"+k]) r=y;
-    return {type:"decl",pays:k,annee:r,date:(r+1)+"-"+jm,montant:0,lib:lib+" · revenus "+r}; });
+  return IMP_DECL.map(([k,lib,ch,def])=>{ const jm=tsJour(T[ch])||def; let r=y-1; if(fait[r+"-"+k]||(k==="FR"&&frSansLoc(r))) r=y;
+    if(k==="FR"&&frSansLoc(r)) return null;
+    return {type:"decl",pays:k,annee:r,date:(r+1)+"-"+jm,montant:0,lib:(k==="BE"&&frSansLoc(r)?"Déclarer en Belgique le bien de Fréjus (aussi sans location, à confirmer avec le comptable)":lib)+" · revenus "+r}; }).filter(Boolean);
 }
 async function impFait(k,r){
   if(!locAdmin()){ toast("Seuls Chouchou et Loulou cochent les déclarations."); return; }
@@ -2137,7 +2149,7 @@ const FR_OBLIG_MENTION="Informations générales 2026, pas un conseil juridique 
 const frOblig = () => { const d=S.meta.find(x=>x.id==="frejus-obligations"); return d&&d.items&&typeof d.items==="object"?d.items:{}; };
 const frObligEtat = k => { const o=frOblig()[k]||{}; return {declare:o.declare&&typeof o.declare==="object"?o.declare:{},statut:FR_OST.some(s=>s[0]===o.statut)?o.statut:"a-faire",date:o.date||"",note:o.note||"",fichiers:Array.isArray(o.fichiers)?o.fichiers:[],declarations:Array.isArray(o.declarations)?o.declarations:[]}; };
 const frObligAvant = () => FR_OBLIG.filter(o=>o[3]&&!["fait","pas-concerne"].includes(frObligEtat(o[0]).statut));
-const frObligRappel = () => { const av=frObligAvant(); return av.length?`<div class="fs-rappel">📋 <b>Obligations à faire avant de louer</b> : ${esc(av.map(o=>o[4]).join(", "))}.
+const frObligRappel = () => { const av=frSansLoc(todayIso().slice(0,4))?[]:frObligAvant(); return av.length?`<div class="fs-rappel">📋 <b>Obligations à faire avant de louer</b> : ${esc(av.map(o=>o[4]).join(", "))}.
   <div class="row" style="gap:6px;margin-top:6px"><button class="react" data-frsecgo="obligations">Voir les obligations</button></div></div>`:""; };
 function frObligHtml(){
   const adm=locAdmin(), av=frObligAvant();
@@ -2770,14 +2782,15 @@ function frResume(){
   S.locations.forEach(l=>locAlertes(l).filter(a=>a[1]==="warn").forEach(a=>al.push(a[0]+" · "+locNomC(l))));
   S.fr_travaux.filter(x=>x.priorite==="urgent"&&x.statut!=="fait").forEach(x=>al.push("Travaux urgents · "+x.titre));
   frEcheances().filter(e=>e.jours<0).forEach(e=>al.push("En retard · "+e.lib));
-  if(frObligAvant().length) al.push("Obligations à faire avant de louer");
+  const sansLoc=frSansLoc(an);
+  if(frObligAvant().length&&!sansLoc) al.push("Obligations à faire avant de louer");
   try{ if(asGlobal().v==="pas-couverts") al.unshift("Assurance : pas couverts pour la location"); }catch{}
   try{ cpEtat().al.filter(x=>x[1]==="fs-pris").forEach(x=>al.unshift("Compte · "+x[0])); }catch{}
   const dep=S.fr_depenses.filter(d=>(d.date||"").slice(0,4)===an).reduce((s,d)=>s+(+d.montant||0),0);
   const quand=x=>esc(fmtD(x.start,{day:"numeric",month:"short"}))+" → "+esc(fmtD(fjFin(x),{day:"numeric",month:"short"}));
   return `<div class="stats fr-res">
     <div class="stat"><span>Prochain séjour famille</span><b class="fr-sb">${fam?quand(fam):"—"}</b><span>${fam?esc(fjQui(fam)):"rien de prévu"}</span></div>
-    <div class="stat"><span>Prochaine location</span><b class="fr-sb">${loc?quand({start:loc.start,end:loc.end}):"—"}</b><span>${loc?esc(locNomC(loc)):"aucune confirmée"}</span></div>
+    <div class="stat"><span>Prochaine location</span><b class="fr-sb">${loc?quand({start:loc.start,end:loc.end}):"—"}</b><span>${loc?esc(locNomC(loc)):sansLoc?"pas de location en "+an:"aucune confirmée"}</span></div>
     <div class="stat" style="${al.length?"border-color:var(--warn)":""}"><span>À surveiller</span><b class="fr-sb" style="${al.length?"color:var(--warn)":""}">${al.length||"Rien"}</b><span>${al.length?esc(al.slice(0,2).join(" · "))+(al.length>2?"…":""):"tout est en ordre"}</span></div>
     <div class="stat"><span>Dépensé en ${an}</span><b class="fr-sb">${esc(eur(dep))}</b><span>${S.fr_depenses.filter(d=>(d.date||"").slice(0,4)===an).length} dépense(s)</span></div></div>`;
 }
@@ -3127,7 +3140,7 @@ function frBilanHtml(){
     ${tsCol?ligne(`<span class="hint">Taxe de séjour collectée, à reverser (hors bilan)</span>`,esc(eur(tsCol))):""}
     <div style="border-top:1px solid var(--line);margin:4px 0"></div>
     ${ligne("<b>Solde net</b>",esc(eur(enc-totD)),enc-totD>=0?"color:var(--ok)":"color:var(--warn)")}
-    ${(()=>{ const T=locTarifs(), ab=T.tsClasse?.5:.3, imp=Math.round(enc*(1-ab)), tx=T.tauxImpot!=null&&T.tauxImpot!==""&&isFinite(+T.tauxImpot)&&+T.tauxImpot>0?+T.tauxImpot:null;
+    ${frSansLoc(an)&&!enc?`<h3 style="margin-top:10px">L'impôt sur les loyers</h3><p class="hint" style="margin:0">Pas de location en ${an} : pas de revenus de location à déclarer en France pour ${an}. En Belgique, le bien de Fréjus se déclare en principe aussi sans location : à confirmer avec le comptable.</p>`:(()=>{ const T=locTarifs(), ab=T.tsClasse?.5:.3, imp=Math.round(enc*(1-ab)), tx=T.tauxImpot!=null&&T.tauxImpot!==""&&isFinite(+T.tauxImpot)&&+T.tauxImpot>0?+T.tauxImpot:null;
       return `<h3 style="margin-top:10px">L'impôt sur ces loyers</h3>${impAlerte()}
       ${ligne("Recettes de location encaissées en "+an,esc(eur(enc)))}
       ${ligne(`Revenu imposable estimé <span class="hint">micro-BIC, abattement ${ab*100} %${T.tsClasse?" (meublé classé)":" (non classé)"}</span>`,esc(eur(imp)))}
@@ -7475,7 +7488,7 @@ function fqAjout(){
   bg.querySelector("#fqa-ok").onclick=async()=>{ const t=bg.querySelector("#fqa-t").value.split(",").map(x=>x.trim()).filter(Boolean); if(!t.length) return; closeSheet(); await fqARacheter(t); render(); }; }
 async function fqRaye(k){ const l=fqListe().slice(); if(!l[k]) return; l.splice(k,1);
   if(await save("courses",{home:FQ,items:l,by:S.me,at:Date.now()},FQ)){ const d=S.courses.find(x=>x.id===FQ); if(d) d.items=l; render(); } }
-BIND_PLUS.push(root=>{ if(root.querySelector&&!root.querySelector("#fr-page")){ root.querySelectorAll("[data-frinv]").forEach(b=>b.onclick=()=>frInvForm(b.dataset.frinv?S.fr_inventaire.find(x=>x.id===b.dataset.frinv):null,b.dataset.piece||"")); root.querySelectorAll("[data-frpieces]").forEach(b=>b.onclick=frPiecesForm); root.querySelectorAll("[data-frverif]").forEach(b=>b.onclick=()=>frVerif(b.dataset.frverif)); const ff=root.querySelector("#fr-invf"); if(ff) ff.onchange=()=>{ S.frInvF=ff.checked?"1":""; render(); }; } root.querySelectorAll("[data-fq]").forEach(b=>b.onclick=()=>{ const [k,a]=b.dataset.fq.split(":");
+BIND_PLUS.push(root=>{ root.querySelectorAll("[data-frsansloc]").forEach(b=>b.onclick=()=>frSansLocBasculer(+b.dataset.frsansloc)); if(root.querySelector&&!root.querySelector("#fr-page")){ root.querySelectorAll("[data-frinv]").forEach(b=>b.onclick=()=>frInvForm(b.dataset.frinv?S.fr_inventaire.find(x=>x.id===b.dataset.frinv):null,b.dataset.piece||"")); root.querySelectorAll("[data-frpieces]").forEach(b=>b.onclick=frPiecesForm); root.querySelectorAll("[data-frverif]").forEach(b=>b.onclick=()=>frVerif(b.dataset.frverif)); const ff=root.querySelector("#fr-invf"); if(ff) ff.onchange=()=>{ S.frInvF=ff.checked?"1":""; render(); }; } root.querySelectorAll("[data-fq]").forEach(b=>b.onclick=()=>{ const [k,a]=b.dataset.fq.split(":");
   ({inv:fqInventaire,maison:fqMaison,depart:fqDepart,ajout:fqAjout,ouvrir:()=>fqOuvrir(a),raye:()=>fqRaye(+a)}[k]||(()=>{}))(); }); });
 /* ---------- Rendu ---------- */
 function bindCommon(root){
