@@ -66,6 +66,7 @@ import SwiftData
     var peremption: String? = nil           // armoires : à consommer avant le
     var prix: Double = 0
     var tiroir: Int? = nil
+    var verifie: String? = nil             // vu au dernier inventaire (Fréjus) le
     var par: String = ""
     var cree: Date = Date.now
 
@@ -194,6 +195,7 @@ enum Schema_ {
         Evenement.self, Idee.self, Reaction.self, Article.self, Boni.self, Foyer.self,
         Recette.self, Photo.self, Visite.self, DocumentBrut.self, Activite.self, TacheMaison.self,
         Restaurant.self, Sortie.self, Hotel.self, PhotoLoisir.self,
+        ObjetMaison.self, ARacheter.self,
     ]
 }
 

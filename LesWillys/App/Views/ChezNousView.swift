@@ -26,6 +26,12 @@ struct ChezNousView: View {
                 }
             } footer: { Text("Planifie tes tâches et tes peintures : l'écran dit quand chacune sera finie.") }
 
+            Section {
+                NavigationLink { FrejusPlacardsView(moi: moi) } label: {
+                    Label("Les placards de Fréjus", systemImage: "sun.max")
+                }
+            } footer: { Text("Armoires, frigo, congélateur, vaisselle : l'inventaire à l'arrivée, le départ, et ce qu'il faut racheter.") }
+
             partage
 
             Section("Le jardin") {

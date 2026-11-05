@@ -17,13 +17,20 @@ struct CuisineView: View {
     @State private var recherche = ""
     @State private var aReclasser: Rangement?
     @State private var fermees: Set<String> = []     // les catégories repliées (toutes ouvertes au départ)
+    @Query private var evenements: [Evenement]
+    /// "frejus" pour les placards de la maison de Fréjus, vide pour ceux du foyer.
+    @AppStorage(Frejus.cleLieu, store: Base.reglages) private var lieu = ""
+    /// Le choix a été fait par l'app (séjour en cours) : il s'efface tout seul après le séjour.
+    @AppStorage("cuisine.lieu.auto", store: Base.reglages) private var lieuAuto = false
+    private static var basculeVue = false
 
     enum Partie: String, CaseIterable, Identifiable {
         case aManger = "À manger", frais = "Le frais", surgelateur = "Surgélateur", armoire = "Armoires", recettes = "Recettes"
         var id: String { rawValue }
     }
 
-    private var foyer: String { Famille.foyer(de: moi) ?? "" }
+    private var foyer: String { lieu == Frejus.cle ? Frejus.cle : (Famille.foyer(de: moi) ?? "") }
+    private var aFrejus: Bool { foyer == Frejus.cle }
     private var monStock: [Article] {
         stock.filter { $0.foyer == foyer && (recherche.isEmpty || $0.nom.localizedCaseInsensitiveContains(recherche)) }
     }
@@ -32,6 +39,7 @@ struct CuisineView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 IciAussi(onglet: "cuisine", moi: moi, visites: visites)
+                if aFrejus { bandeauFrejus }
                 barreParties
                 switch partie {
                 case .aManger: aManger
@@ -47,7 +55,16 @@ struct CuisineView: View {
         .searchable(text: $recherche, prompt: "Chercher dans le stock")
         .background(Theme.emaille(scheme))
         .navigationTitle("Cuisine · \(Famille.nomFoyer(foyer))")
+        .onAppear(perform: basculer)
         .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Menu {
+                    Picker("Quels placards ?", selection: Binding(get: { lieu }, set: { lieu = $0; lieuAuto = false })) {
+                        Text(Famille.nomFoyer(Famille.foyer(de: moi))).tag("")
+                        Text("La maison de Fréjus").tag(Frejus.cle)
+                    }
+                } label: { Label("Quels placards ?", systemImage: aFrejus ? "sun.max" : "house") }
+            }
             ToolbarItem { Button { boni = true } label: { Label("Budget et boni", systemImage: "eurosign.circle") } }
             ToolbarItem { Button { ajout = partie == .surgelateur ? .surgelateur : partie == .armoire ? .armoire : .frais } label: { Label("Ranger quelque chose", systemImage: "plus") } }
         }
@@ -57,6 +74,31 @@ struct CuisineView: View {
             NavigationStack { ReclasserView(articles: monStock.filter { $0.rangement == r.rawValue }, rangement: r) }
         }
         .fullScreenCover(item: $thermomix) { ModeThermomix(recette: $0) }
+    }
+
+    /// Pendant un séjour à Fréjus, la cuisine montre d'elle-même les placards de Fréjus (une fois par lancement) ;
+    /// après le séjour, elle revient au foyer si c'est l'app qui avait basculé.
+    private func basculer() {
+        let enSejour = Frejus.sejour(evenements, moi: moi) != nil
+        if !enSejour && lieuAuto { lieu = ""; lieuAuto = false }
+        guard !Self.basculeVue else { return }
+        Self.basculeVue = true
+        if enSejour && lieu.isEmpty { lieu = Frejus.cle; lieuAuto = true }
+    }
+
+    private var bandeauFrejus: some View {
+        Porte(teinte: Color(hex: 0x2A7FA8)) {
+            Label(Frejus.sejour(evenements, moi: moi).map { "Vous êtes à Fréjus jusqu'au \(Jour.joli($0.fin, .dateTime.day().month(.wide)))" }
+                  ?? "Les placards de Fréjus", systemImage: "sun.max").font(.willys(.headline))
+            Text("Ce que tu ranges, manges ou cuisines compte pour la maison de Fréjus. Le boni reste celui de ton foyer.")
+                .font(.willys(.footnote)).foregroundStyle(.secondary)
+            HStack {
+                NavigationLink { FrejusPlacardsView(moi: moi) } label: { Text("Inventaire et départ") }
+                    .buttonStyle(.borderedProminent)
+                Button("Revenir à mon foyer") { avecAnimation { lieu = ""; lieuAuto = false } }.buttonStyle(.bordered)
+            }
+            .buttonBorderShape(.capsule)
+        }
     }
 
     /// Les cinq parties de la cuisine, en pastilles qu'on fait défiler (cinq segments tenaient mal sur iPhone).

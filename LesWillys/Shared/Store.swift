@@ -40,10 +40,14 @@ enum Base {
 
 /// Règle du boni : un article mangé quitte le stock et son prix part dans le boni du foyer.
 enum Cuisine {
+    /// À Fréjus, le boni va au foyer de celui qui mange, et ce qui est fini dans les armoires part dans « à racheter ».
     static func manger(_ article: Article, par membre: String, dans ctx: ModelContext) {
+        let aFrejus = article.foyer == Frejus.cle
         if article.prix > 0 {
-            ctx.insert(Boni(foyer: article.foyer, nom: article.nom, valeur: article.prix, par: membre))
+            let foyer = aFrejus ? (Famille.foyer(de: membre) ?? article.foyer) : article.foyer
+            ctx.insert(Boni(foyer: foyer, nom: article.nom, valeur: article.prix, par: membre))
         }
+        if aFrejus && article.rangement == "armoire" { Frejus.aRacheter([article.nom], par: membre, dans: ctx) }
         ctx.delete(article)
         ctx.enregistrer()
     }

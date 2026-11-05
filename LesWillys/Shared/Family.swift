@@ -39,7 +39,7 @@ enum Famille {
     static func foyer(de membre: String?) -> String? {
         foyers.first { $0.membres.contains(membre ?? "") }?.id
     }
-    static func nomFoyer(_ id: String?) -> String { foyers.first { $0.id == id }?.nom ?? "" }
+    static func nomFoyer(_ id: String?) -> String { id == "frejus" ? "Fréjus" : foyers.first { $0.id == id }?.nom ?? "" }
 }
 
 /// Types de dates du calendrier, avec la même étiquette que l'app web.
