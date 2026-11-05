@@ -507,7 +507,7 @@ a.w-tile:hover,button.w-tile:hover{transform:translateY(-2px);border-color:color
   .w-pres{border-top:0;padding-top:0;border-left:1px dashed var(--line);padding-left:20px}
 }
 /* La une de l'accueil : le marché du jour, « À découvrir » (préfixe ag-) */
-.ag-une{border-radius:24px;padding:16px 18px;background:linear-gradient(135deg,#2c9a8a,#1f7a6c);color:#fff;display:grid;gap:10px;box-shadow:0 18px 34px -24px rgba(31,122,108,.9);margin-bottom:14px}
+.ag-une{border-radius:24px;padding:14px 18px;background:linear-gradient(135deg,#2c9a8a,#1f7a6c);color:#fff;display:grid;gap:10px;box-shadow:0 18px 34px -24px rgba(31,122,108,.9);margin-bottom:0}
 .ag-une.ag-une-pt{background:linear-gradient(135deg,color-mix(in srgb,#2c9a8a 55%,var(--door)),color-mix(in srgb,#2c9a8a 35%,var(--door)));color:var(--ink)}
 .ag-une-k{font-size:12px;text-transform:uppercase;letter-spacing:.12em;font-weight:800;opacity:.85}
 .ag-une-l{display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px;align-items:center;color:inherit;text-decoration:none}
@@ -515,7 +515,7 @@ a.w-tile:hover,button.w-tile:hover{transform:translateY(-2px);border-color:color
 .ag-une-l b{display:block;font-family:var(--f-display);font-size:clamp(22px,6vw,30px);line-height:1.1;letter-spacing:-.01em}
 .ag-une-h{display:block;font-size:19px;font-weight:700;margin-top:2px}
 .ag-une-p{display:block;font-size:14px;opacity:.9;text-decoration:underline;text-underline-offset:2px}
-.ag-decs-w{margin-bottom:14px;min-width:0;max-width:100%}
+.ag-decs-w{margin-bottom:0;min-width:0;max-width:100%}
 .ag-decs{display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;padding:2px 2px 8px;scrollbar-width:none}
 .ag-decs::-webkit-scrollbar{display:none}
 .ag-dec{flex:0 0 auto;width:min(62vw,220px);scroll-snap-align:start;display:grid;gap:3px;align-content:start;padding:12px;border-radius:18px;background:var(--door);border:1px solid var(--line);box-shadow:var(--tile-shadow);color:var(--ink);text-decoration:none;font-size:13px}
@@ -1061,9 +1061,11 @@ function renderHome(){
     <div class="w-pres" id="presence-box">${presenceHtml()}</div></div>`;
 
   let gaspi=""; try{ gaspi=czGaspi(true); }catch{}
-  let une=""; try{ une=agUne(); }catch(e){ console.error(e); }
-  return une+today+rappelSv+gaspi+`
-  <section class="w-tiles" aria-label="Les pièces de la maison">${tuiles}${vie}</section>
+  /* L'ordre de l'accueil : la date et l'agenda du jour, le marché du jour, les pièces de la maison, puis « À découvrir » et le reste. */
+  let une="", dec=""; try{ une=agUne("haut"); dec=agUne("bas"); }catch(e){ console.error(e); }
+  return today+une+`
+  <section class="w-tiles" aria-label="Les pièces de la maison">${tuiles}</section>`+dec+rappelSv+gaspi+`
+  <section class="w-tiles" aria-label="La vie de la maison">${vie}</section>
   <div class="section" id="w-mots">
     <div class="section-head"><h2>Les petits mots</h2><button class="btn accent" data-add="mot">Laisser un mot</button></div>
     ${notes.length?`<div class="notes">${notes.map(n=>`<div class="note"><span class="pin">${mag(n.by,"sm")}</span><div class="hand">${esc(n.title)}</div><small>${esc(M[n.by]?.n||"")} · ${ago(n.at)}</small>${n.by===S.me?` <button class="react" style="float:right;padding:0 8px;font-size:12px" data-del="ideas:${n.id}">Retirer</button>`:""}</div>`).join("")}</div>`
@@ -7598,7 +7600,7 @@ TUILES_PLUS.push(()=>{ const l=agAVenir().filter(a=>a.zone!=="frejus"), [w0,w1]=
     p:(()=>{ const n=l.filter(agNoel)[0]; return n&&+todayIso().slice(5,7)>=11?esc("🎄 "+n.commune+" · "+fmtD(n.debut,{day:"numeric",month:"short"}).replace(/\./g,"")):""; })()||(l.length?esc(we.length?agPl(we.length,"idée ce week-end","idées ce week-end"):l[0].titre+" · "+fmtD(l[0].debut,{weekday:"short",day:"numeric",month:"short"}).replace(/\./g,"")):"Marchés, fêtes, concerts du coin")}; });
 AUJ_PLUS.push(t=>agAVenir().filter(a=>a.debut<=t&&agFin(a)>=t&&Object.keys(a.tente||{}).length).map(a=>`<a class="w-ev" href="#agenda" style="--c:var(--m-julien)"><i></i><div><b>${esc(a.titre)}</b><span>${esc([a.heure,a.commune].filter(Boolean).join(" · "))} · ça tente ${esc(Object.keys(a.tente).filter(k=>M[k]).map(k=>M[k].n).join(", "))}</span></div></a>`).join(""));
 /* La une de l'accueil : le marché du jour en grand, puis « À découvrir » (ce week-end, Noël, les petites, les bons plans). */
-function agUne(){
+function agUne(part){
   const t=todayIso(), d=S.meta.find(x=>x.id==="marches-hebdo"), mh=(d&&Array.isArray(d.liste))?d.liste:[];
   const auj=((new Date().getDay()+6)%7)+1, dem=auj%7+1;
   const mA=mh.filter(m=>(m.jours||[]).includes(auj)&&!mhFini(m)).sort((a,b)=>(a.voisine?1:0)-(b.voisine?1:0)), mD=mh.filter(m=>(m.jours||[]).includes(dem));
@@ -7619,7 +7621,8 @@ function agUne(){
   const haut=gros.length?`<div class="ag-une"><div class="ag-une-k">Aujourd'hui près de chez nous</div>${gros.map(ligne).join("")}</div>`
     :mD.length?`<div class="ag-une ag-une-pt"><div class="ag-une-k">Demain</div>${mD.map(m=>ligne({ico:"🧺",t:"Marché à "+m.commune,h:m.heure,l:m.lieu,c:m.commune,v:m.voisine})).join("")}</div>`:"";
   const bas=dec.length||bp.length?`<div class="ag-decs-w"><div class="section-head" style="margin-bottom:6px"><h3>À découvrir</h3><a href="#agenda" class="w-switch">Tout voir ›</a></div><div class="ag-decs">${dec.slice(0,8).map(carte).join("")}${bp.map(carteBp).join("")}</div></div>`:"";
-  return haut||bas?`<section aria-label="Près de chez nous" style="min-width:0;max-width:100%">${haut}${bas}</section>`:""; }
+  const x=part==="haut"?haut:part==="bas"?bas:haut+bas;
+  return x?`<section aria-label="Près de chez nous" style="min-width:0;max-width:100%">${x}</section>`:""; }
 /* L'accueil se remet à jour toutes les 5 minutes : un marché fini disparaît, celui qui ouvre apparaît. */
 setInterval(()=>{ try{ if(S.me&&route()==="accueil"&&!document.querySelector(".sheet-bg")&&!document.querySelector(".tm")&&document.visibilityState==="visible") render(); }catch{} },5*60e3);
 function agCarte(a){

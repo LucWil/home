@@ -146,7 +146,9 @@ final class Coin: ObservableObject {
 
 /// La une de l'accueil : le marché du jour en grand, puis « À découvrir ».
 struct CartePresDeChezNous: View {
+    enum Partie { case marche, decouvrir, tout }
     let moi: String
+    var partie: Partie = .tout
     @ObservedObject private var coin = Coin.partage
     @Environment(\.openURL) private var ouvrir
 
@@ -155,14 +157,15 @@ struct CartePresDeChezNous: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            let auj = aujourdhui
-            if !auj.isEmpty {
+            let auj = partie == .decouvrir ? [] : aujourdhui
+            if partie == .decouvrir {
+            } else if !auj.isEmpty {
                 carteVerte(titre: "Aujourd'hui près de chez nous", lignes: auj, plein: true)
             } else if !demain.isEmpty {
                 carteVerte(titre: "Demain", lignes: demain, plein: false)
             }
-            let d = decouvertes
-            if !d.isEmpty || !coin.bonsPlans.isEmpty {
+            let d = partie == .marche ? [] : decouvertes
+            if partie != .marche && (!d.isEmpty || !coin.bonsPlans.isEmpty) {
                 HStack {
                     Text("À découvrir").font(Theme.titre(20))
                     Spacer()
@@ -182,7 +185,7 @@ struct CartePresDeChezNous: View {
                     .padding(.vertical, 2)
                 }
             }
-            if coin.donnees == nil {
+            if coin.donnees == nil && partie != .marche {
                 NavigationLink { PresDeChezNousView(moi: moi) } label: {
                     Porte(teinte: Color(hex: 0x2C9A8A)) { Label("Près de chez nous : marchés, fêtes, concerts, pharmacie de garde", systemImage: "location.north.circle") }
                 }

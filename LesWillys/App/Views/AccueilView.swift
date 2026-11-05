@@ -25,14 +25,17 @@ struct AccueilView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {
-                banniere
+                // L'ordre de l'accueil : la date et l'agenda du jour, le marché du jour, la maison, puis « À découvrir ».
+                aujourdhui
                 // toutes les 5 minutes : un marché fini disparaît, celui qui ouvre apparaît
-                TimelineView(.periodic(from: .now, by: 300)) { _ in CartePresDeChezNous(moi: moi) }
+                TimelineView(.periodic(from: .now, by: 300)) { _ in CartePresDeChezNous(moi: moi, partie: .marche) }
                 CarteNotifications()
                 ViewThatFits(in: .horizontal) {
                     HStack(alignment: .top, spacing: 16) { semaine; VStack(spacing: 16) { nouveau; passages } }
                     VStack(spacing: 16) { semaine; nouveau; passages }
                 }
+                CartePresDeChezNous(moi: moi, partie: .decouvrir)
+                banniere
                 filActivite
                 petitsMots
                 mur
@@ -59,6 +62,42 @@ struct AccueilView: View {
     }
 
     // MARK: Bannière
+
+    /// La date du jour et ce qui est à l'agenda aujourd'hui.
+    private var aujourdhui: some View {
+        let t = Jour.aujourdhui
+        let auj = evenements.filter { $0.debut <= t && $0.fin >= t }
+        return VStack(alignment: .leading, spacing: 10) {
+            Text("AUJOURD'HUI").font(.willys(.caption, poids: .heavy)).tracking(1.2).opacity(0.8)
+            Text(Date.now.formatted(.dateTime.weekday(.wide).day().month(.wide).locale(Locale(identifier: "fr_BE"))).capitalized)
+                .font(Theme.titre(28))
+            if auj.isEmpty {
+                Text("Rien à l'agenda aujourd'hui.").font(.willys(.subheadline)).opacity(0.9)
+            }
+            ForEach(auj) { e in
+                HStack(alignment: .top, spacing: 10) {
+                    RoundedRectangle(cornerRadius: 2).fill(e.typeEvenement.couleur).frame(width: 4)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(e.titre).font(.willys(.headline))
+                        Text(e.typeEvenement.libelle + (e.fin > t ? " · jusqu'au \(Jour.joli(e.fin, .dateTime.weekday(.wide).day().month(.wide)))" : ""))
+                            .font(.willys(.caption)).opacity(0.85)
+                    }
+                }
+                .fixedSize(horizontal: false, vertical: true)
+            }
+            HStack {
+                Button("Laisser un mot") { feuille = .mot }.buttonStyle(.borderedProminent).tint(.white).foregroundStyle(Color(hex: 0x1F4F86))
+                Button("Ajouter une date") { feuille = .evenement }.buttonStyle(.bordered).tint(.white)
+            }
+            .buttonBorderShape(.capsule)
+            .font(.willys(.subheadline, poids: .bold))
+        }
+        .foregroundStyle(.white)
+        .padding(18)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(LinearGradient(colors: [Color(hex: 0x2F6FB5), Color(hex: 0x3F8FD0)], startPoint: .topLeading, endPoint: .bottomTrailing),
+                    in: RoundedRectangle(cornerRadius: 24))
+    }
 
     private var banniere: some View {
         let jour = Int(Date.now.timeIntervalSince1970 / 86400)
