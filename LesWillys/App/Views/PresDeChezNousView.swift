@@ -119,41 +119,133 @@ final class Coin: ObservableObject {
     var marches: [MarcheHebdo] { (donnees?.marches ?? []).sorted { ($0.dans, $0.voisine == true ? 1 : 0) < ($1.dans, $1.voisine == true ? 1 : 0) } }
 }
 
-/// La carte de l'accueil.
+/// La une de l'accueil : le marché du jour en grand, puis « À découvrir ».
 struct CartePresDeChezNous: View {
     let moi: String
     @ObservedObject private var coin = Coin.partage
+    @Environment(\.openURL) private var ouvrir
+
+    private struct Decouverte: Identifiable { let a: ActiviteCoin; let badge: String; var id: String { a.id } }
+    private struct Gros: Identifiable { let id: String; let icone: String; let titre: String; let heure: String; let lieu: String; let commune: String; let voisine: Bool }
 
     var body: some View {
-        NavigationLink { PresDeChezNousView(moi: moi) } label: {
-            Porte(teinte: Color(hex: 0x2C9A8A)) {
-                HStack {
-                    Label("Près de chez nous", systemImage: "location.north.circle").font(.willys(.headline))
-                    Spacer()
-                    Image(systemName: "chevron.right").foregroundStyle(.secondary)
-                }
-                let auj = coin.marches.filter { $0.dans == 0 }
-                if !auj.isEmpty {
-                    Text("🧺 Aujourd'hui : marché à \(auj.map(\.commune).joined(separator: ", "))").font(.willys(.subheadline))
-                }
-                if mois >= 11 || mois == 1, let n = coin.noels.first {
-                    Text("🎄 \(coin.noels.count) marché\(coin.noels.count > 1 ? "s" : "") de Noël · le premier : \(n.commune ?? ""), \(Jour.joli(n.debut, .dateTime.day().month(.wide)))")
-                        .font(.willys(.subheadline))
-                }
-                if let a = coin.aVenir.first(where: { !$0.estNoel && ($0.zone ?? "maison") == "maison" }) {
-                    Text("📍 \(a.titre) · \(Jour.joli(a.debut, .dateTime.weekday(.abbreviated).day().month(.abbreviated)))").font(.willys(.subheadline)).lineLimit(2)
-                }
-                if !coin.bonsPlans.isEmpty {
-                    Text("🛍 \(coin.bonsPlans.count) bon\(coin.bonsPlans.count > 1 ? "s" : "") plan\(coin.bonsPlans.count > 1 ? "s" : "")").font(.willys(.subheadline))
-                }
-                if coin.donnees == nil { Text("Marchés, fêtes, concerts, pharmacie de garde").font(.willys(.subheadline)).foregroundStyle(.secondary) }
+        VStack(alignment: .leading, spacing: 14) {
+            let auj = aujourdhui
+            if !auj.isEmpty {
+                carteVerte(titre: "Aujourd'hui près de chez nous", lignes: auj, plein: true)
+            } else if !demain.isEmpty {
+                carteVerte(titre: "Demain", lignes: demain, plein: false)
             }
-            .foregroundStyle(.primary)
+            let d = decouvertes
+            if !d.isEmpty || !coin.bonsPlans.isEmpty {
+                HStack {
+                    Text("À découvrir").font(Theme.titre(20))
+                    Spacer()
+                    NavigationLink("Tout voir") { PresDeChezNousView(moi: moi) }.font(.willys(.subheadline, poids: .semibold))
+                }
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(alignment: .top, spacing: 10) {
+                        ForEach(d) { x in
+                            NavigationLink { PresDeChezNousView(moi: moi) } label: { vignette(badge: x.badge, icone: x.a.icone, titre: x.a.titre, l1: quand(x.a), l2: [x.a.commune, x.a.heure].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · ")) }
+                                .buttonStyle(.plain)
+                        }
+                        ForEach(coin.bonsPlans.prefix(3)) { b in
+                            NavigationLink { PresDeChezNousView(moi: moi) } label: { vignette(badge: "bon plan", icone: "tag", titre: b.titre, l1: [b.enseigne, b.remise].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · "), l2: b.au.map { "jusqu'au \(Jour.joli($0, .dateTime.day().month(.abbreviated)))" } ?? "") }
+                                .buttonStyle(.plain)
+                        }
+                    }
+                    .padding(.vertical, 2)
+                }
+            }
+            if coin.donnees == nil {
+                NavigationLink { PresDeChezNousView(moi: moi) } label: {
+                    Porte(teinte: Color(hex: 0x2C9A8A)) { Label("Près de chez nous : marchés, fêtes, concerts, pharmacie de garde", systemImage: "location.north.circle") }
+                }
+                .buttonStyle(.plain)
+            }
         }
-        .buttonStyle(.plain)
         .task { if !coin.charge { await coin.rafraichir() } }
     }
-    private var mois: Int { Calendar.current.component(.month, from: .now) }
+
+    private var jourISO: Int { (Calendar.current.component(.weekday, from: .now) + 5) % 7 + 1 }
+    private var aujourdhui: [Gros] {
+        let t = Jour.aujourdhui
+        let ev = coin.aVenir.filter { ($0.zone ?? "maison") == "maison" && $0.debut <= t && $0.finReelle >= t }
+            .map { Gros(id: $0.id, icone: $0.icone, titre: $0.titre, heure: $0.heure ?? "", lieu: [$0.lieu, $0.commune].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: ", "), commune: $0.commune ?? "", voisine: false) }
+        let m = coin.marches.filter { $0.jours.contains(jourISO) }
+            .map { Gros(id: $0.commune + $0.jour, icone: "basket", titre: "Marché à \($0.commune)", heure: $0.heure, lieu: $0.lieu, commune: $0.commune, voisine: $0.voisine == true) }
+        return ev + m
+    }
+    private var demain: [Gros] {
+        let j = jourISO % 7 + 1
+        return coin.marches.filter { $0.jours.contains(j) }
+            .map { Gros(id: $0.commune + $0.jour, icone: "basket", titre: "Marché à \($0.commune)", heure: $0.heure, lieu: $0.lieu, commune: $0.commune, voisine: $0.voisine == true) }
+    }
+    private var decouvertes: [Decouverte] {
+        let t = Jour.aujourdhui
+        let l = coin.aVenir.filter { ($0.zone ?? "maison") == "maison" && !($0.debut <= t && $0.finReelle >= t) }
+        let cal = Calendar.current
+        let samedi = cal.nextDate(after: .now.addingTimeInterval(-86400), matching: DateComponents(weekday: 7), matchingPolicy: .nextTime) ?? .now
+        let w0 = Jour.chaine(samedi.addingTimeInterval(-86400)), w1 = Jour.chaine(samedi.addingTimeInterval(86400))
+        var vus = Set<String>(), r: [Decouverte] = []
+        func pousser(_ a: ActiviteCoin, _ b: String) { if !vus.contains(a.id) { vus.insert(a.id); r.append(Decouverte(a: a, badge: b)) } }
+        l.filter { $0.debut <= w1 && $0.finReelle >= w0 }.prefix(4).forEach { pousser($0, "ce week-end") }
+        if cal.component(.month, from: .now) >= 11 { l.filter(\.estNoel).prefix(4).forEach { pousser($0, "Noël") } }
+        l.filter { $0.enfants == true }.prefix(3).forEach { pousser($0, "avec les petites") }
+        l.prefix(8).forEach { pousser($0, "") }
+        return Array(r.prefix(8))
+    }
+
+    private func carteVerte(titre: String, lignes: [Gros], plein: Bool) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(titre.uppercased()).font(.willys(.caption, poids: .heavy)).tracking(1.2).opacity(0.85)
+            ForEach(lignes) { g in
+                Button {
+                    var c = URLComponents(string: "https://maps.apple.com/")!; c.queryItems = [URLQueryItem(name: "q", value: g.lieu + ", " + g.commune + ", Belgique")]
+                    if let u = c.url { ouvrir(u) }
+                } label: {
+                    HStack(alignment: .center, spacing: 12) {
+                        Image(systemName: g.icone).font(.title).frame(width: 54, height: 54)
+                            .background(.white.opacity(0.18), in: RoundedRectangle(cornerRadius: 16))
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(g.titre).font(Theme.titre(plein ? 28 : 22)).multilineTextAlignment(.leading)
+                            if !g.heure.isEmpty { Text(g.heure).font(.willys(.title3, poids: .bold)) }
+                            Label(g.lieu + (g.voisine ? " · dans les environs" : ""), systemImage: "mappin.and.ellipse").font(.willys(.subheadline)).underline()
+                        }
+                        Spacer(minLength: 0)
+                    }
+                }
+                .buttonStyle(.plain)
+                .accessibilityHint("Ouvre le lieu dans Plans")
+            }
+        }
+        .foregroundStyle(plein ? Color.white : Color.primary)
+        .padding(18)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(LinearGradient(colors: plein ? [Color(hex: 0x2C9A8A), Color(hex: 0x1F7A6C)] : [Color(hex: 0x2C9A8A).opacity(0.35), Color(hex: 0x2C9A8A).opacity(0.18)],
+                                   startPoint: .topLeading, endPoint: .bottomTrailing), in: RoundedRectangle(cornerRadius: 24))
+    }
+
+    private func vignette(badge: String, icone: String, titre: String, l1: String, l2: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            if !badge.isEmpty { Etiquette(texte: badge, couleur: Color(hex: 0x2C9A8A)) }
+            Image(systemName: icone).font(.title2).foregroundStyle(Theme.accent)
+            Text(titre).font(.willys(.subheadline, poids: .bold)).lineLimit(3).multilineTextAlignment(.leading)
+            if !l1.isEmpty { Text(l1).font(.willys(.caption)).foregroundStyle(.secondary) }
+            if !l2.isEmpty { Text(l2).font(.willys(.caption)).foregroundStyle(.secondary).lineLimit(2) }
+        }
+        .padding(12)
+        .frame(width: 200, alignment: .topLeading)
+        .frame(minHeight: 150, alignment: .topLeading)
+        .background(.background, in: RoundedRectangle(cornerRadius: 18))
+        .overlay(RoundedRectangle(cornerRadius: 18).strokeBorder(.primary.opacity(0.08)))
+    }
+
+    private func quand(_ a: ActiviteCoin) -> String {
+        a.finReelle > a.debut
+            ? "\(Jour.joli(a.debut, .dateTime.day().month(.abbreviated))) → \(Jour.joli(a.finReelle, .dateTime.day().month(.abbreviated)))"
+            : Jour.joli(a.debut, .dateTime.weekday(.abbreviated).day().month(.abbreviated))
+    }
 }
 
 struct PresDeChezNousView: View {

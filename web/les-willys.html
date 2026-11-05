@@ -506,6 +506,24 @@ a.w-tile:hover,button.w-tile:hover{transform:translateY(-2px);border-color:color
   .w-wide > h3{grid-column:1 / -1}
   .w-pres{border-top:0;padding-top:0;border-left:1px dashed var(--line);padding-left:20px}
 }
+/* La une de l'accueil : le marché du jour, « À découvrir » (préfixe ag-) */
+.ag-une{border-radius:24px;padding:16px 18px;background:linear-gradient(135deg,#2c9a8a,#1f7a6c);color:#fff;display:grid;gap:10px;box-shadow:0 18px 34px -24px rgba(31,122,108,.9);margin-bottom:14px}
+.ag-une.ag-une-pt{background:linear-gradient(135deg,color-mix(in srgb,#2c9a8a 55%,var(--door)),color-mix(in srgb,#2c9a8a 35%,var(--door)));color:var(--ink)}
+.ag-une-k{font-size:12px;text-transform:uppercase;letter-spacing:.12em;font-weight:800;opacity:.85}
+.ag-une-l{display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px;align-items:center;color:inherit;text-decoration:none}
+.ag-une-ico{font-size:34px;width:54px;height:54px;border-radius:16px;display:grid;place-items:center;background:rgba(255,255,255,.18)}
+.ag-une-l b{display:block;font-family:var(--f-display);font-size:clamp(22px,6vw,30px);line-height:1.1;letter-spacing:-.01em}
+.ag-une-h{display:block;font-size:19px;font-weight:700;margin-top:2px}
+.ag-une-p{display:block;font-size:14px;opacity:.9;text-decoration:underline;text-underline-offset:2px}
+.ag-decs-w{margin-bottom:14px;min-width:0;max-width:100%}
+.ag-decs{display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;padding:2px 2px 8px;scrollbar-width:none}
+.ag-decs::-webkit-scrollbar{display:none}
+.ag-dec{flex:0 0 auto;width:min(62vw,220px);scroll-snap-align:start;display:grid;gap:3px;align-content:start;padding:12px;border-radius:18px;background:var(--door);border:1px solid var(--line);box-shadow:var(--tile-shadow);color:var(--ink);text-decoration:none;font-size:13px}
+.ag-dec b{font-size:15.5px;line-height:1.25}
+.ag-dec span{color:var(--muted)}
+.ag-dec .ag-dec-k{justify-self:start;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:#1f7a6c;background:color-mix(in srgb,#2c9a8a 16%,var(--door));border-radius:999px;padding:1px 8px}
+.ag-dec .ag-dec-i{font-size:26px;color:inherit}
+.ag-dec-bp .ag-dec-k{color:var(--accent-ink);background:color-mix(in srgb,var(--accent) 30%,var(--door))}
 /* La saison à Fréjus (préfixe fs-) */
 .fs-mois-l{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:14px}
 .fs-mois{display:grid;gap:6px;align-content:start;min-width:0}
@@ -1043,7 +1061,8 @@ function renderHome(){
     <div class="w-pres" id="presence-box">${presenceHtml()}</div></div>`;
 
   let gaspi=""; try{ gaspi=czGaspi(true); }catch{}
-  return today+rappelSv+gaspi+`
+  let une=""; try{ une=agUne(); }catch(e){ console.error(e); }
+  return une+today+rappelSv+gaspi+`
   <section class="w-tiles" aria-label="Les pièces de la maison">${tuiles}${vie}</section>
   <div class="section" id="w-mots">
     <div class="section-head"><h2>Les petits mots</h2><button class="btn accent" data-add="mot">Laisser un mot</button></div>
@@ -7578,13 +7597,29 @@ TUILES_PLUS.push(()=>{ const l=agAVenir().filter(a=>a.zone!=="frejus"), [w0,w1]=
   return {r:"agenda",t:"Près de chez nous",c:"var(--m-julien)",ico:AG_ICO,b:we.length?String(we.length):"",
     p:(()=>{ const n=l.filter(agNoel)[0]; return n&&+todayIso().slice(5,7)>=11?esc("🎄 "+n.commune+" · "+fmtD(n.debut,{day:"numeric",month:"short"}).replace(/\./g,"")):""; })()||(l.length?esc(we.length?agPl(we.length,"idée ce week-end","idées ce week-end"):l[0].titre+" · "+fmtD(l[0].debut,{weekday:"short",day:"numeric",month:"short"}).replace(/\./g,"")):"Marchés, fêtes, concerts du coin")}; });
 AUJ_PLUS.push(t=>agAVenir().filter(a=>a.debut<=t&&agFin(a)>=t&&Object.keys(a.tente||{}).length).map(a=>`<a class="w-ev" href="#agenda" style="--c:var(--m-julien)"><i></i><div><b>${esc(a.titre)}</b><span>${esc([a.heure,a.commune].filter(Boolean).join(" · "))} · ça tente ${esc(Object.keys(a.tente).filter(k=>M[k]).map(k=>M[k].n).join(", "))}</span></div></a>`).join(""));
-/* Dans le bandeau « Aujourd'hui » : les marchés de Noël et ce qui se passe dans les 7 jours (deux lignes au plus), plus les bons plans en cours. */
-AUJ_PLUS.push(t=>{ const l=agAVenir().filter(a=>(a.zone||"maison")==="maison"&&!(a.debut<=t&&Object.keys(a.tente||{}).length));
-  const noel=+t.slice(5,7)>=11?l.filter(agNoel):[], sem=l.filter(a=>!agNoel(a)&&a.debut<=fjAdd(t,7)), bp=(S.bonsplans||[]).filter(x=>(!x.au||x.au>=t)&&(!x.du||x.du<=t));
-  const ligne=(titre,sous)=>`<a class="w-ev" href="#agenda" style="--c:var(--m-julien)"><i></i><div><b>${titre}</b><span>${sous}</span></div></a>`;
-  return [noel.length?ligne("🎄 "+agPl(noel.length,"marché de Noël","marchés de Noël")+" près de chez nous",esc("le premier : "+noel[0].commune+", "+fmtD(noel[0].debut,{weekday:"long",day:"numeric",month:"long"}))):"",
-    sem.length?ligne("📍 "+esc(sem[0].titre),esc([fmtD(sem[0].debut,{weekday:"long",day:"numeric",month:"short"}),sem[0].commune].filter(Boolean).join(" · "))+(sem.length>1?" · et "+(sem.length-1)+" autre"+(sem.length>2?"s":""):"")):"",
-    bp.length?ligne("🛍 "+agPl(bp.length,"bon plan","bons plans")+" en cours",esc(bp.slice(0,3).map(x=>x.enseigne).filter(Boolean).join(", "))):""].join(""); });
+/* La une de l'accueil : le marché du jour en grand, puis « À découvrir » (ce week-end, Noël, les petites, les bons plans). */
+function agUne(){
+  const t=todayIso(), d=S.meta.find(x=>x.id==="marches-hebdo"), mh=(d&&Array.isArray(d.liste))?d.liste:[];
+  const auj=((new Date().getDay()+6)%7)+1, dem=auj%7+1;
+  const mA=mh.filter(m=>(m.jours||[]).includes(auj)).sort((a,b)=>(a.voisine?1:0)-(b.voisine?1:0)), mD=mh.filter(m=>(m.jours||[]).includes(dem));
+  const evA=agAVenir().filter(a=>(a.zone||"maison")==="maison"&&a.debut<=t&&agFin(a)>=t);
+  const plan=(lieu,c)=>`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(lieu+", "+c+", Belgique")}`;
+  const gros=[...evA.map(a=>({ico:(AG_CATS[a.cat]||AG_CATS.autre)[1],t:a.titre,h:a.heure||"",l:[a.lieu,a.commune].filter(Boolean).join(", "),c:a.commune||""})),
+    ...mA.map(m=>({ico:"🧺",t:"Marché à "+m.commune,h:m.heure,l:m.lieu,c:m.commune,v:m.voisine}))];
+  const ligne=x=>`<a class="ag-une-l" href="${esc(plan(x.l,x.c))}" target="_blank" rel="noopener"><span class="ag-une-ico">${x.ico}</span><span style="min-width:0"><b>${esc(x.t)}</b><span class="ag-une-h">${esc(x.h)}</span><span class="ag-une-p">📍 ${esc(x.l)}${x.v?" · dans les environs":""}</span></span></a>`;
+  const [w0,w1]=agWeekend(), av=agAVenir().filter(a=>(a.zone||"maison")==="maison"&&!(a.debut<=t&&agFin(a)>=t));
+  const dec=[], vu=new Set(), pousse=(x,badge)=>{ if(x&&!vu.has(x.id)){ vu.add(x.id); dec.push({...x,badge}); } };
+  av.filter(a=>a.debut<=w1&&agFin(a)>=w0).slice(0,4).forEach(a=>pousse(a,"ce week-end"));
+  if(+t.slice(5,7)>=11) av.filter(agNoel).slice(0,4).forEach(a=>pousse(a,"Noël"));
+  av.filter(a=>a.enfants).slice(0,3).forEach(a=>pousse(a,"avec les petites"));
+  av.slice(0,8).forEach(a=>pousse(a,""));
+  const bp=(S.bonsplans||[]).filter(x=>(!x.au||x.au>=t)).slice(0,3);
+  const carte=a=>`<a class="ag-dec" href="#agenda"><span class="ag-dec-k">${esc(a.badge||fmtD(a.debut,{weekday:"short"}).replace(".",""))}</span><span class="ag-dec-i">${(AG_CATS[a.cat]||AG_CATS.autre)[1]}</span><b>${esc(a.titre)}</b><span>${esc(fmtD(a.debut,{weekday:"short",day:"numeric",month:"short"}).replace(/\./g,""))}${a.fin&&a.fin>a.debut?" → "+esc(fmtD(a.fin,{day:"numeric",month:"short"})):""}</span><span>${esc(a.commune||"")}${a.heure?" · "+esc(a.heure):""}</span></a>`;
+  const carteBp=x=>`<a class="ag-dec ag-dec-bp" href="#agenda"><span class="ag-dec-k">bon plan</span><span class="ag-dec-i">🛍</span><b>${esc(x.titre)}</b><span>${esc(x.enseigne||"")}${x.remise?" · "+esc(x.remise):""}</span><span>${x.au?"jusqu'au "+esc(fmtD(x.au,{day:"numeric",month:"short"})):""}</span></a>`;
+  const haut=gros.length?`<div class="ag-une"><div class="ag-une-k">Aujourd'hui près de chez nous</div>${gros.map(ligne).join("")}</div>`
+    :mD.length?`<div class="ag-une ag-une-pt"><div class="ag-une-k">Demain</div>${mD.map(m=>ligne({ico:"🧺",t:"Marché à "+m.commune,h:m.heure,l:m.lieu,c:m.commune,v:m.voisine})).join("")}</div>`:"";
+  const bas=dec.length||bp.length?`<div class="ag-decs-w"><div class="section-head" style="margin-bottom:6px"><h3>À découvrir</h3><a href="#agenda" class="w-switch">Tout voir ›</a></div><div class="ag-decs">${dec.slice(0,8).map(carte).join("")}${bp.map(carteBp).join("")}</div></div>`:"";
+  return haut||bas?`<section aria-label="Près de chez nous" style="min-width:0;max-width:100%">${haut}${bas}</section>`:""; }
 function agCarte(a){
   const [cl,ci]=AG_CATS[a.cat]||AG_CATS.autre, t=Object.keys(a.tente||{}).filter(k=>M[k]), moi=!!(a.tente||{})[S.me], lien=urlSure(a.lien);
   const quand=a.fin&&a.fin>a.debut?fmtD(a.debut,{day:"numeric",month:"short"})+" → "+fmtD(a.fin,{day:"numeric",month:"short"}):fmtD(a.debut,{weekday:"long",day:"numeric",month:"long"});
