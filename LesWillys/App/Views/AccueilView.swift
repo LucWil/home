@@ -69,7 +69,7 @@ struct AccueilView: View {
         let auj = evenements.filter { $0.debut <= t && $0.fin >= t }
         return VStack(alignment: .leading, spacing: 10) {
             Text("AUJOURD'HUI").font(.willys(.caption, poids: .heavy)).tracking(1.2).opacity(0.8)
-            Text(Date.now.formatted(.dateTime.weekday(.wide).day().month(.wide).locale(Locale(identifier: "fr_BE"))).capitalized)
+            Text({ let t = Date.now.formatted(.dateTime.weekday(.wide).day().month(.wide).locale(Locale(identifier: "fr_BE"))); return t.prefix(1).uppercased() + t.dropFirst() }())
                 .font(Theme.titre(28))
             if auj.isEmpty {
                 Text("Rien à l'agenda aujourd'hui.").font(.willys(.subheadline)).opacity(0.9)
