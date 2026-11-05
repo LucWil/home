@@ -7601,11 +7601,11 @@ AUJ_PLUS.push(t=>agAVenir().filter(a=>a.debut<=t&&agFin(a)>=t&&Object.keys(a.ten
 function agUne(){
   const t=todayIso(), d=S.meta.find(x=>x.id==="marches-hebdo"), mh=(d&&Array.isArray(d.liste))?d.liste:[];
   const auj=((new Date().getDay()+6)%7)+1, dem=auj%7+1;
-  const mA=mh.filter(m=>(m.jours||[]).includes(auj)).sort((a,b)=>(a.voisine?1:0)-(b.voisine?1:0)), mD=mh.filter(m=>(m.jours||[]).includes(dem));
+  const mA=mh.filter(m=>(m.jours||[]).includes(auj)&&!mhFini(m)).sort((a,b)=>(a.voisine?1:0)-(b.voisine?1:0)), mD=mh.filter(m=>(m.jours||[]).includes(dem));
   const evA=agAVenir().filter(a=>(a.zone||"maison")==="maison"&&a.debut<=t&&agFin(a)>=t);
   const plan=(lieu,c)=>`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(lieu+", "+c+", Belgique")}`;
   const gros=[...evA.map(a=>({ico:(AG_CATS[a.cat]||AG_CATS.autre)[1],t:a.titre,h:a.heure||"",l:[a.lieu,a.commune].filter(Boolean).join(", "),c:a.commune||""})),
-    ...mA.map(m=>({ico:"🧺",t:"Marché à "+m.commune,h:m.heure,l:m.lieu,c:m.commune,v:m.voisine}))];
+    ...mA.map(m=>({ico:"🧺",t:"Marché à "+m.commune,h:mhHoraire(m),l:m.lieu,c:m.commune,v:m.voisine}))];
   const ligne=x=>`<a class="ag-une-l" href="${esc(plan(x.l,x.c))}" target="_blank" rel="noopener"><span class="ag-une-ico">${x.ico}</span><span style="min-width:0"><b>${esc(x.t)}</b><span class="ag-une-h">${esc(x.h)}</span><span class="ag-une-p">📍 ${esc(x.l)}${x.v?" · dans les environs":""}</span></span></a>`;
   const [w0,w1]=agWeekend(), av=agAVenir().filter(a=>(a.zone||"maison")==="maison"&&!(a.debut<=t&&agFin(a)>=t));
   const dec=[], vu=new Set(), pousse=(x,badge)=>{ if(x&&!vu.has(x.id)){ vu.add(x.id); dec.push({...x,badge}); } };
@@ -7620,6 +7620,8 @@ function agUne(){
     :mD.length?`<div class="ag-une ag-une-pt"><div class="ag-une-k">Demain</div>${mD.map(m=>ligne({ico:"🧺",t:"Marché à "+m.commune,h:m.heure,l:m.lieu,c:m.commune,v:m.voisine})).join("")}</div>`:"";
   const bas=dec.length||bp.length?`<div class="ag-decs-w"><div class="section-head" style="margin-bottom:6px"><h3>À découvrir</h3><a href="#agenda" class="w-switch">Tout voir ›</a></div><div class="ag-decs">${dec.slice(0,8).map(carte).join("")}${bp.map(carteBp).join("")}</div></div>`:"";
   return haut||bas?`<section aria-label="Près de chez nous" style="min-width:0;max-width:100%">${haut}${bas}</section>`:""; }
+/* L'accueil se remet à jour toutes les 5 minutes : un marché fini disparaît, celui qui ouvre apparaît. */
+setInterval(()=>{ try{ if(S.me&&route()==="accueil"&&!document.querySelector(".sheet-bg")&&!document.querySelector(".tm")&&document.visibilityState==="visible") render(); }catch{} },5*60e3);
 function agCarte(a){
   const [cl,ci]=AG_CATS[a.cat]||AG_CATS.autre, t=Object.keys(a.tente||{}).filter(k=>M[k]), moi=!!(a.tente||{})[S.me], lien=urlSure(a.lien);
   const quand=a.fin&&a.fin>a.debut?fmtD(a.debut,{day:"numeric",month:"short"})+" → "+fmtD(a.fin,{day:"numeric",month:"short"}):fmtD(a.debut,{weekday:"long",day:"numeric",month:"long"});
@@ -7674,14 +7676,27 @@ const agNoel = a => /no[eë]l|christmas|kerst/i.test((a.titre||"")+" "+(a.resume
 function agNoelHtml(){ const m=+todayIso().slice(5,7); if(m<11&&m!==1) return "";
   const l=agAVenir().filter(a=>(a.zone||"maison")==="maison"&&agNoel(a)); if(!l.length) return "";
   return `<div class="door" style="margin-top:14px;border-color:var(--sc-be);background:color-mix(in srgb,var(--sc-be) 7%,var(--door))"><div class="section-head"><h3>🎄 Les marchés de Noël</h3><span class="cnt">${l.length}</span></div>${l.map(agCarte).join("")}</div>`; }
+/* Les heures d'un marché lues dans son texte (« 8 h – 13 h », « 14 h – 18 h (19 h de mai à septembre) ») : {deb, fin} en minutes, ou null. */
+function mhHeures(txt){ const m=String(txt||"").match(/(\d{1,2}) ?h ?(\d{2})?\s*[–-]\s*(\d{1,2}) ?h ?(\d{2})?/); if(!m) return null;
+  let deb=+m[1]*60+(+m[2]||0), fin=+m[3]*60+(+m[4]||0);
+  const e=String(txt).match(/\((?:dès )?(\d{1,2}) ?h ?(\d{2})? de mai à septembre\)/), mo=new Date().getMonth()+1;
+  if(e&&mo>=5&&mo<=9){ const v=+e[1]*60+(+e[2]||0); if(v<deb) deb=v; else fin=v; }
+  return {deb,fin}; }
+const mhMaintenant = () => { const d=new Date(); return d.getHours()*60+d.getMinutes(); };
+const mhFini = m => { const h=mhHeures(m.heure); return !!h&&mhMaintenant()>=h.fin; };
+function mhEtat(m){ const h=mhHeures(m.heure); if(!h) return ""; const n=mhMaintenant(), hh=x=>Math.floor(x/60)+" h"+(x%60?String(x%60).padStart(2,"0"):"");
+  return n<h.deb?"commence à "+hh(h.deb):n<h.fin?"en ce moment · jusqu'à "+hh(h.fin):"terminé"; }
+/* L'horaire du jour, propre : « 14 h – 19 h · en ce moment ». */
+function mhHoraire(m){ const h=mhHeures(m.heure); if(!h) return m.heure||""; const hh=x=>Math.floor(x/60)+" h"+(x%60?String(x%60).padStart(2,"0"):""), n=mhMaintenant();
+  return hh(h.deb)+" – "+hh(h.fin)+(n>=h.deb&&n<h.fin?" · en ce moment":""); }
 /* Les marchés de la semaine : meta/marches-hebdo {maj, liste:[{commune, voisine, jours:[1-7, lundi=1], jour, heure, lieu, note, source, lien}]}. */
 const MH_JOURS=["","lundi","mardi","mercredi","jeudi","vendredi","samedi","dimanche"];
 function mhHtml(){
   const d=S.meta.find(x=>x.id==="marches-hebdo"), l=(d&&Array.isArray(d.liste))?d.liste:[]; if(!l.length) return "";
   const auj=((new Date().getDay()+6)%7)+1, dans=j=>(j-auj+7)%7;
-  const tri=l.map(m=>({...m,p:Math.min(...(m.jours||[8]).map(dans))})).sort((a,b)=>a.p-b.p||(a.voisine?1:0)-(b.voisine?1:0));
+  const tri=l.map(m=>({...m,p:Math.min(...(m.jours||[8]).map(j=>{ const x=dans(j); return x===0&&mhFini(m)?7:x; }))})).sort((a,b)=>a.p-b.p||(a.voisine?1:0)-(b.voisine?1:0));
   const carte=m=>{ const lien=urlSure(m.lien); return `<div class="fs-opt" style="grid-template-columns:minmax(0,1fr)"><div style="min-width:0;display:grid;gap:3px">
-    <div class="fs-oh"><b>🧺 ${esc(m.commune)}</b><span class="fs-st ${m.p===0?"fs-libre":""}">${m.p===0?"aujourd'hui":m.p===1?"demain":esc(m.jour||"")}</span>${m.voisine?`<span class="fs-st">dans les environs</span>`:""}</div>
+    <div class="fs-oh"><b>🧺 ${esc(m.commune)}</b><span class="fs-st ${m.p===0?"fs-libre":""}">${m.p===0?"aujourd'hui"+(mhEtat(m)?" · "+esc(mhEtat(m)):""):m.p===1?"demain":esc(m.jour||"")}</span>${m.voisine?`<span class="fs-st">dans les environs</span>`:""}</div>
     <div class="hint" style="color:var(--ink)">${esc(m.jour||"")} · ${esc(m.heure||"")}</div>
     <a class="hint" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((m.lieu||"")+", "+m.commune+", Belgique")}" target="_blank" rel="noopener">📍 ${esc(m.lieu||"")}</a>
     ${m.note?`<div class="hint">${esc(m.note)}</div>`:""}${lien?`<a class="hint" href="${esc(lien)}" target="_blank" rel="noopener">source : ${esc(m.source||"lien")} ↗</a>`:""}</div></div>`; };

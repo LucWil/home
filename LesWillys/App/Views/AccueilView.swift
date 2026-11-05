@@ -26,7 +26,8 @@ struct AccueilView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {
                 banniere
-                CartePresDeChezNous(moi: moi)
+                // toutes les 5 minutes : un marché fini disparaît, celui qui ouvre apparaît
+                TimelineView(.periodic(from: .now, by: 300)) { _ in CartePresDeChezNous(moi: moi) }
                 CarteNotifications()
                 ViewThatFits(in: .horizontal) {
                     HStack(alignment: .top, spacing: 16) { semaine; VStack(spacing: 16) { nouveau; passages } }

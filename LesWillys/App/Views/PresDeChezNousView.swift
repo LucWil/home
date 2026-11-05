@@ -68,9 +68,34 @@ struct MarcheHebdo: Codable, Hashable {
     var voisine: Bool?
 
     /// Dans combien de jours (0 = aujourd'hui).
+    /// Un marché fini aujourd'hui compte pour sa prochaine fois.
     var dans: Int {
         let auj = (Calendar.current.component(.weekday, from: .now) + 5) % 7 + 1
-        return jours.map { ($0 - auj + 7) % 7 }.min() ?? 9
+        return jours.map { j -> Int in let x = (j - auj + 7) % 7; return x == 0 && fini ? 7 : x }.min() ?? 9
+    }
+
+    /// Les heures lues dans le texte (« 8 h – 13 h », « 14 h – 18 h (19 h de mai à septembre) »), en minutes.
+    var heures: (deb: Int, fin: Int)? {
+        let motif = #/(\d{1,2}) ?h ?(\d{2})?\s*[–-]\s*(\d{1,2}) ?h ?(\d{2})?/#
+        guard let m = heure.firstMatch(of: motif) else { return nil }
+        var deb = Int(m.1)! * 60 + (m.2.flatMap { Int($0) } ?? 0)
+        var fin = Int(m.3)! * 60 + (m.4.flatMap { Int($0) } ?? 0)
+        let ete = #/\((?:dès )?(\d{1,2}) ?h ?(\d{2})? de mai à septembre\)/#
+        let mois = Calendar.current.component(.month, from: .now)
+        if let e = heure.firstMatch(of: ete), (5...9).contains(mois) {
+            let v = Int(e.1)! * 60 + (e.2.flatMap { Int($0) } ?? 0)
+            if v < deb { deb = v } else { fin = v }
+        }
+        return (deb, fin)
+    }
+    private static var maintenant: Int { let c = Calendar.current.dateComponents([.hour, .minute], from: .now); return (c.hour ?? 0) * 60 + (c.minute ?? 0) }
+    var fini: Bool { heures.map { Self.maintenant >= $0.fin } ?? false }
+    /// « 14 h – 19 h · en ce moment »
+    var horaireDuJour: String {
+        guard let h = heures else { return heure }
+        func t(_ x: Int) -> String { "\(x / 60) h" + (x % 60 > 0 ? String(format: "%02d", x % 60) : "") }
+        let n = Self.maintenant
+        return "\(t(h.deb)) – \(t(h.fin))" + (n >= h.deb && n < h.fin ? " · en ce moment" : "")
     }
 }
 
@@ -172,8 +197,8 @@ struct CartePresDeChezNous: View {
         let t = Jour.aujourdhui
         let ev = coin.aVenir.filter { ($0.zone ?? "maison") == "maison" && $0.debut <= t && $0.finReelle >= t }
             .map { Gros(id: $0.id, icone: $0.icone, titre: $0.titre, heure: $0.heure ?? "", lieu: [$0.lieu, $0.commune].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: ", "), commune: $0.commune ?? "", voisine: false) }
-        let m = coin.marches.filter { $0.jours.contains(jourISO) }
-            .map { Gros(id: $0.commune + $0.jour, icone: "basket", titre: "Marché à \($0.commune)", heure: $0.heure, lieu: $0.lieu, commune: $0.commune, voisine: $0.voisine == true) }
+        let m = coin.marches.filter { $0.jours.contains(jourISO) && !$0.fini }
+            .map { Gros(id: $0.commune + $0.jour, icone: "basket", titre: "Marché à \($0.commune)", heure: $0.horaireDuJour, lieu: $0.lieu, commune: $0.commune, voisine: $0.voisine == true) }
         return ev + m
     }
     private var demain: [Gros] {
@@ -273,7 +298,7 @@ struct PresDeChezNousView: View {
                         VStack(alignment: .leading, spacing: 3) {
                             HStack {
                                 Text(m.commune).bold()
-                                if m.dans == 0 { Etiquette(texte: "aujourd'hui", couleur: Theme.ok) }
+                                if m.dans == 0 { Etiquette(texte: m.horaireDuJour.hasSuffix("en ce moment") ? "en ce moment" : "aujourd'hui", couleur: Theme.ok) }
                                 else if m.dans == 1 { Etiquette(texte: "demain") }
                                 if m.voisine == true { Etiquette(texte: "dans les environs") }
                             }
