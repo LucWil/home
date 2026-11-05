@@ -7563,6 +7563,63 @@ function formPassage(hId,s0){
       if(st) setTimeout(()=>laisserAvis(h.name,h.adresse||h.city,s.avis[S.me].mot,st),500); } };
 }
 BIND_PLUS.push(root=>{ root.querySelectorAll("[data-hspass]").forEach(b=>b.onclick=()=>{ const [h,s]=b.dataset.hspass.split(":"); formPassage(h,s?S.sorties.find(x=>x.id===s):null); }); });
+/* ---------- L'agenda du coin (préfixe ag) ---------- */ /* Collection agenda, remplie par la recherche automatique (tâche planifiée) : {titre, debut:"AAAA-MM-JJ", fin, heure, commune, lieu, zone:"maison"|"frejus", cat, resume, prix, enfants:bool, lien (https), source (nom du site ou de la page), canal:"facebook"|"instagram"|"journal"|"commune"|"tourisme"|"site", trouveLe, tente:{membre:true}, evId (événement ajouté au calendrier)}. Rien n'est inventé : chaque activité garde sa source. */
+plusColl("agenda",(a,b)=>(a.debut||"").localeCompare(b.debut||""));
+const AG_COMMUNES=["Chaumont-Gistoux","Perwez","Jodoigne","Ramillies","Wavre"];
+const AG_CATS={marche:["Marché","🧺"],brocante:["Brocante","🪑"],fete:["Fête, kermesse","🎪"],concert:["Concert","🎵"],spectacle:["Spectacle, théâtre","🎭"],expo:["Expo, musée","🖼"],enfants:["Pour les enfants","🧸"],sport:["Sport, balade","🚶"],nature:["Nature","🌿"],gastronomie:["Gourmand","🍷"],atelier:["Atelier","✂️"],autre:["À voir","📌"]};
+const AG_CANAUX={facebook:"Facebook",instagram:"Instagram",journal:"Journal",commune:"Commune",tourisme:"Office du tourisme",site:"Site"};
+const agPl=(n,un,des)=>n+" "+(n>1?des:un);
+const AG_ICO='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l18-8-8 18-2-8-8-2z"/></svg>';
+const agFin = a => a.fin&&a.fin>=a.debut?a.fin:a.debut;
+const agAVenir = () => { const t=todayIso(); return S.agenda.filter(a=>a.debut&&agFin(a)>=t); };
+function agSejourFj(){ const t=todayIso(); return S.events.filter(e=>e.type==="frejus"&&e.start&&fjFin(e)>=t).sort((a,b)=>a.start.localeCompare(b.start))[0]||null; }
+const agWeekend = () => { const d=new Date(), j=(d.getDay()+6)%7, sam=fjAdd(todayIso(),Math.max(0,5-j)); return [j>=5?todayIso():fjAdd(sam,-1),fjAdd(sam,1)]; };
+TUILES_PLUS.push(()=>{ const l=agAVenir().filter(a=>a.zone!=="frejus"), [w0,w1]=agWeekend(), we=l.filter(a=>a.debut<=w1&&agFin(a)>=w0);
+  return {r:"agenda",t:"Près de chez nous",c:"var(--m-julien)",ico:AG_ICO,b:we.length?String(we.length):"",
+    p:l.length?esc(we.length?agPl(we.length,"idée ce week-end","idées ce week-end"):l[0].titre+" · "+fmtD(l[0].debut,{weekday:"short",day:"numeric",month:"short"}).replace(/\./g,"")):"Marchés, fêtes, concerts du coin"}; });
+AUJ_PLUS.push(t=>agAVenir().filter(a=>a.debut<=t&&agFin(a)>=t&&Object.keys(a.tente||{}).length).map(a=>`<a class="w-ev" href="#agenda" style="--c:var(--m-julien)"><i></i><div><b>${esc(a.titre)}</b><span>${esc([a.heure,a.commune].filter(Boolean).join(" · "))} · ça tente ${esc(Object.keys(a.tente).filter(k=>M[k]).map(k=>M[k].n).join(", "))}</span></div></a>`).join(""));
+function agCarte(a){
+  const [cl,ci]=AG_CATS[a.cat]||AG_CATS.autre, t=Object.keys(a.tente||{}).filter(k=>M[k]), moi=!!(a.tente||{})[S.me], lien=urlSure(a.lien);
+  const quand=a.fin&&a.fin>a.debut?fmtD(a.debut,{day:"numeric",month:"short"})+" → "+fmtD(a.fin,{day:"numeric",month:"short"}):fmtD(a.debut,{weekday:"long",day:"numeric",month:"long"});
+  return `<div class="ev"><div class="date-tile"><b>${esc(a.debut.slice(8,10).replace(/^0/,""))}</b><span>${esc(fmtD(a.debut,{month:"short"}).replace(".",""))}</span></div>
+    <div style="min-width:0;display:grid;gap:4px"><div><b>${ci} ${esc(a.titre)}</b></div>
+      <div class="muted" style="font-size:14px">${esc(quand)}${a.heure?" · "+esc(a.heure):""} · ${esc([a.lieu,a.commune].filter(Boolean).join(", "))}${a.prix?" · "+esc(a.prix):""}</div>
+      ${a.resume?`<div style="font-size:14px">${esc(a.resume)}</div>`:""}
+      <div class="pick" style="gap:6px;align-items:center"><span class="tag">${esc(cl)}</span>${a.enfants&&a.cat!=="enfants"?`<span class="tag">🧸 avec les petites</span>`:""}
+        ${lien?`<a class="tag" href="${esc(lien)}" target="_blank" rel="noopener" style="text-decoration:none">${esc(AG_CANAUX[a.canal]||"Source")}${a.source?" · "+esc(a.source):""} ↗</a>`:a.source?`<span class="tag">${esc(a.source)}</span>`:""}</div>
+      <div class="row" style="gap:6px;align-items:center"><button class="react ${moi?"on":""}" data-agtente="${esc(a.id)}">🙋 Ça me tente${t.length?" · "+t.length:""}</button>
+        ${t.length?`<span class="stack">${t.map(k=>mag(k,"sm")).join("")}</span>`:""}
+        ${a.evId&&S.events.some(e=>e.id===a.evId)?`<span class="hint">au calendrier ✓</span>`:`<button class="react" data-agcal="${esc(a.id)}">Au calendrier</button>`}
+        ${wa(a.titre+" — "+quand+(a.heure?" "+a.heure:"")+" à "+(a.commune||"")+(lien?"\n"+lien:""))}</div></div></div>`; }
+function renderAgenda(){
+  const zone=S.agZone==="frejus"?"frejus":"maison", com=S.agCom||"", per=S.agPer||"2s", t=todayIso(), [w0,w1]=agWeekend(), sj=agSejourFj();
+  let l=agAVenir().filter(a=>(a.zone||"maison")===zone);
+  if(zone==="maison"&&com) l=l.filter(a=>a.commune===com);
+  if(zone==="frejus"&&sj&&per!=="tout") l=l.filter(a=>a.debut<=fjFin(sj)&&agFin(a)>=sj.start);
+  else if(per==="we") l=l.filter(a=>a.debut<=w1&&agFin(a)>=w0); else if(per==="2s") l=l.filter(a=>a.debut<=fjAdd(t,14));
+  const maj=S.agenda.map(a=>a.trouveLe||"").sort().pop();
+  return `${pageTete("Marchés, fêtes, concerts, balades","Près de chez nous")}
+  <div class="seg" style="margin-top:10px">${[["maison","Chez nous"],["frejus","Fréjus et environs"]].map(([k,n])=>`<button data-agzone="${k}" aria-pressed="${zone===k}">${n}</button>`).join("")}</div>
+  ${zone==="maison"?`<div class="pick" style="gap:6px;margin-top:10px">${["",...AG_COMMUNES].map(c=>`<button type="button" class="tag" data-agcom="${esc(c)}" style="border:2px solid ${com===c?"var(--ink)":"transparent"}">${esc(c||"Toutes")}</button>`).join("")}</div>
+    <div class="seg" style="margin-top:10px">${[["we","Ce week-end"],["2s","Deux semaines"],["tout","Tout"]].map(([k,n])=>`<button data-agper="${k}" aria-pressed="${per===k}">${n}</button>`).join("")}</div>`
+  :`<div class="door" style="margin-top:10px">${sj?`<b>Séjour du ${esc(fmtD(sj.start,{day:"numeric",month:"long"}))} au ${esc(fmtD(fjFin(sj),{day:"numeric",month:"long"}))}</b><div class="hint">Les activités de Fréjus, Saint-Raphaël et des environs pendant le séjour. Elles arrivent quelques semaines avant le départ.</div>
+      <div class="row" style="margin-top:8px"><button class="react" data-agper="${per==="tout"?"2s":"tout"}">${per==="tout"?"Seulement pendant le séjour":"Tout voir"}</button></div>`
+    :`<b>Pas de séjour à Fréjus au calendrier</b><div class="hint">Dès qu'un séjour « Maison de Fréjus » est prévu, la recherche ajoute ici ce qui se passe sur place pendant ces dates.</div>`}</div>`}
+  <div class="door" style="margin-top:14px">${l.length?l.map(agCarte).join(""):`<div class="empty">Rien pour l'instant${zone==="maison"&&(com||per!=="tout")?" avec ces filtres":""}. La recherche passe chaque semaine.</div>`}</div>
+  <p class="hint" style="margin-top:10px">Trouvé par Claude dans les agendas des communes, des offices du tourisme et des journaux, et sur les pages Facebook et Instagram publiques${maj?" · dernière recherche le "+esc(fmtD(maj,{day:"numeric",month:"long"})):""}. Chaque activité garde son lien : vérifie la date et l'heure à la source avant de partir.</p>`; }
+plusRoute("agenda",renderAgenda,"Près de chez nous","regarde l'agenda du coin");
+async function agTente(id){ const a=S.agenda.find(x=>x.id===id); if(!a||!S.db) { if(!S.db) toast("Connecte-toi à claude.ai pour enregistrer."); return; }
+  const v={...(a.tente||{})}; if(v[S.me]) delete v[S.me]; else v[S.me]=true;
+  try{ await S.db.collection("agenda").doc(id).update({tente:v}); a.tente=v; render(); }catch{ toast("Pas enregistré."); } }
+async function agCal(id){ const a=S.agenda.find(x=>x.id===id); if(!a) return;
+  const ev={type:"ensemble",title:(AG_CATS[a.cat]||AG_CATS.autre)[1]+" "+a.titre+(a.heure?" ("+a.heure+")":"")+(a.commune?" · "+a.commune:""),start:a.debut,end:agFin(a),people:[S.me,...Object.keys(a.tente||{}).filter(k=>k!==S.me&&M[k])],by:S.me,at:Date.now()};
+  try{ const ref=await S.db.collection("events").add(ev); if(ref&&ref.id){ await S.db.collection("agenda").doc(id).update({evId:ref.id}); a.evId=ref.id; } toast("Ajouté au calendrier"); render(); }catch{ toast(S.db?"Pas enregistré.":"Connecte-toi à claude.ai pour enregistrer."); } }
+BIND_PLUS.push(root=>{
+  root.querySelectorAll("[data-agzone]").forEach(b=>b.onclick=()=>{ S.agZone=b.dataset.agzone; render(); });
+  root.querySelectorAll("[data-agcom]").forEach(b=>b.onclick=()=>{ S.agCom=b.dataset.agcom; render(); });
+  root.querySelectorAll("[data-agper]").forEach(b=>b.onclick=()=>{ S.agPer=b.dataset.agper; render(); });
+  root.querySelectorAll("[data-agtente]").forEach(b=>b.onclick=()=>agTente(b.dataset.agtente));
+  root.querySelectorAll("[data-agcal]").forEach(b=>b.onclick=()=>agCal(b.dataset.agcal)); });
 /* ---------- Rendu ---------- */
 function bindCommon(root){
   root.querySelectorAll("[data-add]").forEach(b=>b.onclick=()=>{ const [k,arg]=b.dataset.add.split(":");
