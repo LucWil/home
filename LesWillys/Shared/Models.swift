@@ -102,7 +102,7 @@ import SwiftData
 }
 
 @Model final class Foyer {
-    var cle: String = ""                 // "luc", "mj", "ambre", "robin"
+    var cle: String = ""                 // "luc", "mj", "ambre"
     var nom: String = ""
     var objectifLibelle: String = ""
     var objectifMontant: Double = 0

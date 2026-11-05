@@ -83,7 +83,7 @@ struct Fournisseur: TimelineProvider {
         }
 
         // Qui est où ce week-end : Fréjus si un événement Fréjus couvre samedi avec un membre du foyer,
-        // sinon Luxembourg pour Ambre et Robin, Belgique pour les autres (réglable plus tard).
+        // sinon Luxembourg pour Ambre, Belgique pour les autres (réglable plus tard).
         let samedi = Jour.chaine(Calendar.current.nextDate(after: .now.addingTimeInterval(-86400),
                                                             matching: DateComponents(weekday: 7), matchingPolicy: .nextTime) ?? .now)
         i.foyers = Famille.foyers.map { f in

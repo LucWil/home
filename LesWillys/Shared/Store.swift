@@ -17,7 +17,7 @@ enum Base {
     }
     static var monFoyer: String? { Famille.foyer(de: moi) }
 
-    /// La base SwiftData est locale à l'appareil. La synchronisation entre les huit membres
+    /// La base SwiftData est locale à l'appareil. La synchronisation entre les membres
     /// passe par `SynchroFamille` (CloudKit, zone partagée « Willys »), pas par SwiftData.
     static func conteneur() -> ModelContainer {
         let schema = Schema(Schema_.modeles)

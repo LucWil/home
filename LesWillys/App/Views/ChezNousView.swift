@@ -130,7 +130,7 @@ extension ChezNousView {
         } header: { Text("Partage familial") } footer: {
             Text(synchro.estProprietaire
                  ? "La maison commune est dans ton iCloud. « Inviter la famille » envoie un lien à chacun ; ils n'ont qu'à le toucher une fois. Les IBAN restent sur cet appareil."
-                 : "Toutes les données sont dans l'iCloud de Chouchou et partagées avec les huit membres. Accepter l'invitation une fois suffit pour l'iPhone et l'iPad.")
+                 : "Toutes les données sont dans l'iCloud de Chouchou et partagées avec toute la famille. Accepter l'invitation une fois suffit pour l'iPhone et l'iPad.")
         }
     }
 }

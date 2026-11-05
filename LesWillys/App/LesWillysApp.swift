@@ -74,7 +74,7 @@ struct RacineView: View {
     @Environment(\.modelContext) private var ctx
     @Environment(\.colorScheme) private var scheme
     @Environment(\.scenePhase) private var phase
-    @State private var moi: String? = RacineView.demo("demoMoi") ?? Base.moi
+    @State private var moi: String? = RacineView.demo("demoMoi") ?? Base.moi.flatMap { Famille.estActif($0) ? $0 : nil }
     @State private var onglet: Onglet = RacineView.demo("demoOnglet").flatMap(Onglet.init(rawValue:)) ?? .accueil
 
     /// Pour les captures d'écran automatiques (simulateur, GitHub) : `-demoMoi loulou -demoOnglet loisirs`

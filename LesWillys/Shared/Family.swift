@@ -17,20 +17,24 @@ enum Famille {
         Membre(id: "manhattan", nom: "Manhattan", couleur: Color(hex: 0xC8456B)),
         Membre(id: "julien",    nom: "Julien",    couleur: Color(hex: 0x2C9A8A)),
         Membre(id: "ambre",     nom: "Ambre",     couleur: Color(hex: 0xD98A1F)),
-        Membre(id: "robin",     nom: "Robin",     couleur: Color(hex: 0x5F8A2E)),
         Membre(id: "leonor",    nom: "Léonor",    couleur: Color(hex: 0xE07AA0), enfant: true),
         Membre(id: "amalia",    nom: "Amalia",    couleur: Color(hex: 0xE5B437), enfant: true),
     ]
     static let adultes = membres.filter { !$0.enfant }
     static let enfants = membres.filter { $0.enfant }
-    static func membre(_ id: String?) -> Membre? { membres.first { $0.id == id } }
+    /// Ceux qui ne sont plus dans l'app : leurs anciennes données gardent un nom,
+    /// mais ils n'apparaissent plus dans les listes, les aimants ni l'écran « Qui rentre ? ».
+    static let anciens: [Membre] = [
+        Membre(id: "robin", nom: "Robin", couleur: Color(hex: 0x5F8A2E)),
+    ]
+    static func membre(_ id: String?) -> Membre? { (membres + anciens).first { $0.id == id } }
+    static func estActif(_ id: String?) -> Bool { membres.contains { $0.id == id } }
 
     /// Les quatre foyers ; chaque foyer a son stock, ses tickets et son boni.
     static let foyers: [(id: String, nom: String, membres: [String])] = [
         ("luc",   "Luc et Loulou",       ["chouchou", "loulou"]),
         ("mj",    "Manhattan et Julien", ["manhattan", "julien"]),
         ("ambre", "Ambre",               ["ambre"]),
-        ("robin", "Robin",               ["robin"]),
     ]
     static func foyer(de membre: String?) -> String? {
         foyers.first { $0.membres.contains(membre ?? "") }?.id

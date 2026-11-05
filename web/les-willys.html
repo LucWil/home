@@ -671,11 +671,12 @@ const MEMBERS = [
   {k:"manhattan",n:"Manhattan"},
   {k:"julien",n:"Julien"},
   {k:"ambre",n:"Ambre"},
-  {k:"robin",n:"Robin"},
   {k:"leonor",n:"Léonor",kid:true,parents:"Manhattan et Julien"},
   {k:"amalia",n:"Amalia",kid:true,parents:"Manhattan et Julien"}
 ];
-const M = Object.fromEntries(MEMBERS.map(m=>[m.k,m]));
+/* Ceux qui ne sont plus dans l'app : leurs anciennes données gardent un nom, mais ils n'apparaissent plus nulle part. */
+const ANCIENS = [{k:"robin",n:"Robin",parti:true}];
+const M = Object.fromEntries([...MEMBERS,...ANCIENS].map(m=>[m.k,m]));
 const ADULTS = MEMBERS.filter(m=>!m.kid), KIDS = MEMBERS.filter(m=>m.kid);
 const SEASON = {
   0:["chou","poireau","chicon","céleri-rave","panais","pomme","poire","orange"],
@@ -696,10 +697,9 @@ const TYPES = {garde:"Garde",weekend:"Week-end",voyage:"Voyage",ensemble:"Moment
 const HOMES = [
   {k:"luc",n:"Luc et Loulou",members:["chouchou","loulou"]},
   {k:"mj",n:"Manhattan et Julien",members:["manhattan","julien"]},
-  {k:"ambre",n:"Ambre",members:["ambre"]},
-  {k:"robin",n:"Robin",members:["robin"]}
+  {k:"ambre",n:"Ambre",members:["ambre"]}
 ];
-const HM = Object.fromEntries(HOMES.map(h=>[h.k,h]));
+const HM = Object.fromEntries([...HOMES,{k:"robin",n:"Robin",members:[],parti:true}].map(h=>[h.k,h]));
 const HOME_OF = Object.fromEntries(HOMES.flatMap(h=>h.members.map(m=>[m,h.k])));
 const CATS = [{k:"viandes",n:"Viandes",c:"#c8456b",drawer:1},{k:"poissons",n:"Poissons",c:"#2f6fb5",drawer:2},
   {k:"plats",n:"Plats pr\u00e9par\u00e9s",c:"#e2973a",drawer:3},{k:"legumes",n:"L\u00e9gumes",c:"#5f8a2e",drawer:4},
@@ -7350,7 +7350,7 @@ window.addEventListener("error",ev=>{ try{
   if(app && !app.querySelector(".top, .person, .door")) app.innerHTML=oops(ev.error||ev.message,"L'application");
 }catch{} });
 S.sub=store.get("frigo.sub")||"stock";
-const saved=store.get("frigo.me"); if(saved && M[saved] && !M[saved].kid){ S.me=saved; S.lastSeen=+store.get("frigo.seen."+saved)||0; }
+const saved=store.get("frigo.me"); if(saved && M[saved] && !M[saved].kid && !M[saved].parti){ S.me=saved; S.lastSeen=+store.get("frigo.seen."+saved)||0; }
 try{ render(); }catch(e){ app.innerHTML=oops(e,"L'application"); }
 connect().then(()=>{ if(S.me) markVisit(); setTimeout(menageFil,8000); }).catch(e=>{ S.ready=true; try{ render(); }catch{} });
 })();
