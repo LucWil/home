@@ -96,7 +96,8 @@ final class Meteo: ObservableObject {
 struct LigneMeteo: View {
     @ObservedObject private var meteo = Meteo.partage
     var body: some View {
-        Group {
+        // un VStack et pas un Group : un Group vide ne lance jamais son .task
+        VStack(alignment: .leading, spacing: 0) {
             if let m = meteo.aMontrer {
                 let j = m.jour, demain = m.demain, te = j.tenue
                 HStack(alignment: .top, spacing: 10) {
