@@ -106,6 +106,7 @@ final class SynchroFamille: ObservableObject {
         ajouter(Restaurant.self); ajouter(Sortie.self); ajouter(Hotel.self); ajouter(PhotoLoisir.self)
         ajouter(TacheMaison.self); ajouter(ObjetMaison.self); ajouter(ARacheter.self)
         ajouter(Etape.self); ajouter(ReponseSouper.self)
+        ajouter(KitFoyer.self); ajouter(ElementKit.self); ajouter(NoteKit.self)
         FileSynchro.ajouter(lignes)
         envoyerFile()
     }
@@ -254,6 +255,9 @@ final class SynchroFamille: ObservableObject {
         case ARacheter.typeEnregistrement: return chercher(ARacheter.self)
         case Etape.typeEnregistrement: return chercher(Etape.self)
         case ReponseSouper.typeEnregistrement: return chercher(ReponseSouper.self)
+        case KitFoyer.typeEnregistrement: return chercher(KitFoyer.self)
+        case ElementKit.typeEnregistrement: return chercher(ElementKit.self)
+        case NoteKit.typeEnregistrement: return chercher(NoteKit.self)
         default: return nil
         }
     }
@@ -281,6 +285,9 @@ final class SynchroFamille: ObservableObject {
         case ARacheter.typeEnregistrement: let a = ARacheter(nom: "", par: ""); a.cle = id; o = a
         case Etape.typeEnregistrement: let e = Etape(voyage: "", jour: 1, ordre: 0, titre: "", par: ""); e.cle = id; o = e
         case ReponseSouper.typeEnregistrement: let r = ReponseSouper(date: "", foyer: "", membre: "", etat: "", par: ""); r.cle = id; o = r
+        case KitFoyer.typeEnregistrement: o = KitFoyer(foyer: id, personnes: 2)
+        case ElementKit.typeEnregistrement: let e = ElementKit(foyer: "", element: ""); e.cle = id; o = e
+        case NoteKit.typeEnregistrement: let n = NoteKit(texte: "", foyer: "", par: ""); n.cle = id; o = n
         case DocumentBrut.typeEnregistrement:
             let m = id.split(separator: ":", maxSplits: 1).map(String.init)
             o = DocumentBrut(collection: m.first ?? "", cle: m.count > 1 ? m[1] : id, json: Data(), foyer: "")

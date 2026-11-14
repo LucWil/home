@@ -35,6 +35,12 @@ struct ChezNousView: View {
                 }
             } footer: { Text("Armoires, frigo, congélateur, vaisselle : l'inventaire à l'arrivée, le départ, et ce qu'il faut racheter.") }
 
+            Section {
+                NavigationLink { Kit72View(moi: moi) } label: {
+                    Label("Kit 72 heures", systemImage: "cross.case")
+                }
+            } footer: { Text("Tenir 3 jours sans courant, sans eau ni chauffage : la liste, notre plan et nos retours d'expérience.") }
+
             partage
 
             Section("Le jardin") {

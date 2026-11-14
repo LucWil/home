@@ -384,3 +384,27 @@ struct FicheOffreVoyage: View {
         ctx.enregistrer(); Retour.succes(); fermer()
     }
 }
+
+// MARK: - Kit 72 heures : un rappel seulement quand quelque chose périme
+
+struct RappelKit72: View {
+    let moi: String
+    @Query private var elements: [ElementKit]
+
+    var body: some View {
+        if let f = Famille.foyer(de: moi) {
+            let l = Kit72.aRenouveler(elements, foyer: f)
+            if !l.isEmpty {
+                NavigationLink { Kit72View(moi: moi) } label: {
+                    Porte(teinte: .orange) {
+                        Label("Kit 72 heures : \(l.count) chose\(l.count > 1 ? "s" : "") à renouveler", systemImage: "cross.case.fill")
+                            .font(.willys(.headline)).foregroundStyle(.orange)
+                        Text(l.prefix(3).map { "\(Kit72.libelle($0.element)) (\($0.exp < Jour.aujourdhui ? "périmé" : "avant le " + Jour.joli($0.exp, .dateTime.day().month(.abbreviated))))" }.joined(separator: " · "))
+                            .font(.willys(.caption)).foregroundStyle(.secondary)
+                    }
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+}

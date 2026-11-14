@@ -197,6 +197,7 @@ enum Schema_ {
         Restaurant.self, Sortie.self, Hotel.self, PhotoLoisir.self,
         ObjetMaison.self, ARacheter.self,
         Etape.self, ReponseSouper.self,
+        KitFoyer.self, ElementKit.self, NoteKit.self,
     ]
 }
 
