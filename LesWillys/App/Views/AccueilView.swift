@@ -29,12 +29,14 @@ struct AccueilView: View {
                 aujourdhui
                 // toutes les 5 minutes : un marché fini disparaît, celui qui ouvre apparaît
                 TimelineView(.periodic(from: .now, by: 300)) { _ in CartePresDeChezNous(moi: moi, partie: .marche) }
+                CarteSouper(moi: moi)
                 CarteNotifications()
                 ViewThatFits(in: .horizontal) {
                     HStack(alignment: .top, spacing: 16) { semaine; VStack(spacing: 16) { nouveau; passages } }
                     VStack(spacing: 16) { semaine; nouveau; passages }
                 }
                 CartePresDeChezNous(moi: moi, partie: .decouvrir)
+                CarteBonnesAffaires(moi: moi)
                 banniere
                 filActivite
                 petitsMots
@@ -85,6 +87,7 @@ struct AccueilView: View {
                 }
                 .fixedSize(horizontal: false, vertical: true)
             }
+            LigneMeteo()
             HStack {
                 Button("Laisser un mot") { feuille = .mot }.buttonStyle(.borderedProminent).tint(.white).foregroundStyle(Color(hex: 0x1F4F86))
                 Button("Ajouter une date") { feuille = .evenement }.buttonStyle(.bordered).tint(.white)

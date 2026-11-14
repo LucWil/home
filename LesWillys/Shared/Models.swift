@@ -196,7 +196,7 @@ enum Schema_ {
         Recette.self, Photo.self, Visite.self, DocumentBrut.self, Activite.self, TacheMaison.self,
         Restaurant.self, Sortie.self, Hotel.self, PhotoLoisir.self,
         ObjetMaison.self, ARacheter.self,
-        Etape.self,
+        Etape.self, ReponseSouper.self,
     ]
 }
 
