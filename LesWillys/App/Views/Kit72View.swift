@@ -146,8 +146,15 @@ private struct PlanKit: View {
     let foyer: String
     let moi: String
     @Environment(\.modelContext) private var ctx
-    @State private var rdv = "", rdv2 = "", petites = "", contacts = "", radio = ""
-    @State private var essaiDate = Date.now, essaiFait = false, essaiDuree = "", essaiBilan = ""
+    @State private var rdv = ""
+    @State private var rdv2 = ""
+    @State private var petites = ""
+    @State private var contacts = ""
+    @State private var radio = ""
+    @State private var essaiDate = Date.now
+    @State private var essaiFait = false
+    @State private var essaiDuree = ""
+    @State private var essaiBilan = ""
 
     var body: some View {
         Section {
