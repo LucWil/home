@@ -11124,6 +11124,255 @@ BIND_PLUS.push(root=>{
   root.querySelectorAll("[data-mwym]").forEach(a=>a.addEventListener("click",()=>{ S.mwYm=a.dataset.mwym; }));
   root.querySelectorAll("[data-mwgo]").forEach(b=>b.onclick=()=>{ S.mwYm=mwDecale(S.mwYm||mwDefaut(),+b.dataset.mwgo); render(); window.scrollTo(0,0); });
 });
+/* Styles des modules semaine, routines et écran de la maison (préfixes sm, rt, cd). */
+(()=>{ const st=document.createElement("style"); st.textContent=`
+.sm-pr .sm-prl{display:grid;grid-template-columns:28px minmax(0,1fr);gap:8px;align-items:center;margin-top:8px}
+.sm-pr .sm-prl span{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:var(--accent);color:var(--accent-ink);font-weight:800}
+.sm-grille{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px}
+@media(max-width:900px){.sm-grille{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:470px){.sm-grille{grid-template-columns:minmax(0,1fr)}}
+.sm-j{background:var(--door);border:1px solid var(--line);border-radius:16px;padding:10px;display:grid;gap:5px;align-content:start;min-height:120px;min-width:0;box-shadow:var(--tile-shadow)}
+.sm-j.sm-auj{border:2px solid var(--accent)}
+.sm-jh{display:flex;justify-content:space-between;align-items:baseline;gap:6px}.sm-jh b{font-family:var(--f-display)}.sm-jh span{font-size:12px;color:var(--muted)}
+.sm-ev{font-size:13px;line-height:1.3;border-left:4px solid var(--c,var(--accent));padding:2px 6px;border-radius:4px;background:color-mix(in srgb,var(--c,var(--accent)) 12%,var(--door));overflow-wrap:anywhere}
+.sm-menu{font-size:13px;color:var(--muted);overflow-wrap:anywhere}
+.sm-t{display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;gap:8px;align-items:center;font-weight:500;font-size:14px;padding:5px 0;border-top:1px dashed var(--line)}
+.sm-t input{width:20px;height:20px;margin:0}.sm-t.sm-fait > span{text-decoration:line-through;color:var(--muted)}
+.sm-x{border:0;background:none;color:var(--muted);padding:2px 4px;font-size:13px}
+html.cd-actif,html.cd-actif body{overflow:hidden}
+.cd{position:fixed;inset:0;z-index:30;display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:22px;
+  padding:max(22px,env(safe-area-inset-top)) max(26px,env(safe-area-inset-right)) max(22px,env(safe-area-inset-bottom)) max(26px,env(safe-area-inset-left));
+  background:radial-gradient(120% 90% at 0% 0%,color-mix(in srgb,var(--sky2) 22%,var(--bg)),var(--bg) 60%);color:var(--ink);overflow:auto;transition:filter .6s}
+.cd-g1,.cd-g2{display:grid;gap:16px;align-content:start;min-width:0}
+.cd-h{font-family:var(--f-display);font-weight:800;font-size:clamp(64px,11vw,150px);line-height:.9;letter-spacing:-.04em;font-variant-numeric:tabular-nums;color:var(--sky-title)}
+.cd-d{font-family:var(--f-display);font-size:clamp(22px,3.2vw,38px);font-weight:700;text-transform:capitalize;margin-top:-6px}
+.cd-mt{display:flex;gap:14px;align-items:center;background:var(--door);border:1px solid var(--line);border-radius:20px;padding:12px 16px;box-shadow:var(--tile-shadow)}
+.cd-mti{font-size:46px;line-height:1}.cd-mt b{display:block;font-size:24px;font-family:var(--f-display)}.cd-mt span{display:block;font-size:16px;color:var(--muted)}
+.cd-b{background:var(--door);border:1px solid var(--line);border-radius:20px;padding:14px 18px;display:grid;gap:8px;box-shadow:var(--tile-shadow)}
+.cd-k{font-size:13px;text-transform:uppercase;letter-spacing:.14em;font-weight:800;color:var(--muted)}
+.cd-ev{display:flex;justify-content:space-between;gap:10px;align-items:center;border-left:6px solid var(--c);padding:4px 10px;border-radius:6px;background:color-mix(in srgb,var(--c) 10%,var(--door))}
+.cd-ev b{font-size:clamp(17px,2vw,22px);font-weight:700;line-height:1.25;overflow-wrap:anywhere}
+.cd-s{color:var(--muted);font-size:17px}.cd-g{font-size:clamp(20px,2.4vw,26px);font-family:var(--f-display)}
+.cd-mags{display:flex;gap:12px;flex-wrap:wrap}.cd-mg{position:relative}.cd-mg i{position:absolute;right:-6px;bottom:-4px;font-style:normal;font-size:12px;font-weight:800;width:20px;height:20px;border-radius:50%;display:grid;place-items:center;background:var(--door);border:1px solid var(--line)}
+.cd-mg.cd-non .magnet{opacity:.35}.cd-mg.cd-oui i{background:var(--ok);color:#fff;border-color:var(--ok)}
+.cd-ph{margin:0;border-radius:22px;overflow:hidden;background:#000;position:relative;aspect-ratio:4/3;box-shadow:0 20px 40px -24px rgba(0,0,0,.7)}
+.cd-ph img{width:100%;height:100%;object-fit:cover;display:block;transition:opacity .8s}
+.cd-ph figcaption{position:absolute;left:0;right:0;bottom:0;padding:24px 16px 12px;color:#fff;font-family:var(--f-hand);font-size:24px;background:linear-gradient(transparent,rgba(0,0,0,.55))}
+.cd-ph0{display:grid;place-items:center;text-align:center;padding:20px;color:var(--muted);background:var(--door);border:2px dashed var(--line);font-size:18px}
+.cd-mot{font-family:var(--f-hand);font-size:24px;background:#fff6c9;color:#3b3110;border-radius:6px;padding:12px 16px;transform:rotate(-1deg);box-shadow:0 10px 18px -12px rgba(0,0,0,.45)}
+.cd-mot small{font-family:var(--f-body);font-size:13px;opacity:.75}
+.cd-pj{display:grid;gap:2px}.cd-pj b{text-transform:capitalize}.cd-pj span{color:var(--muted);font-size:15px}
+.cd-an{display:flex;gap:8px;align-items:center}
+.cd-mar .ag-une{margin:0}
+.cd-bar{position:fixed;right:max(14px,env(safe-area-inset-right));bottom:max(12px,env(safe-area-inset-bottom));display:flex;gap:8px;opacity:.35;transition:opacity .2s}
+.cd-bar:hover,.cd-bar:focus-within{opacity:1}
+.cd-btn{border:1px solid var(--line);background:var(--door);color:var(--ink);border-radius:999px;padding:6px 12px;font-size:13px;font-weight:700;text-decoration:none}
+.cd.cd-nuit{background:#05080b;color:#c9d3da;filter:brightness(.55)}.cd.cd-nuit .cd-g2,.cd.cd-nuit .cd-b,.cd.cd-nuit .cd-mt,.cd.cd-nuit .cd-mar{display:none}
+.cd.cd-nuit{grid-template-columns:1fr;place-content:center;text-align:center}.cd.cd-nuit .cd-h{color:#c9d3da}
+@media(max-width:760px){.cd{grid-template-columns:minmax(0,1fr)}.cd-h{font-size:78px}}
+`; document.head.appendChild(st); })();
+/* ---------- Fiches A4 à imprimer (préfixe fa) ---------- */ /* Une page HTML autonome au format A4, téléchargée : on l'ouvre et on l'imprime (ou AirPrint depuis l'iPhone). */
+function faDoc(titre, sous, corps, paysage){
+  const e=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+  return `<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>${e(titre)}</title><style>
+@page{size:A4 ${paysage?"landscape":"portrait"};margin:12mm}
+*{box-sizing:border-box}body{font:11pt/1.35 "Helvetica Neue",Arial,sans-serif;color:#1d2734;margin:0}
+h1{font:800 22pt/1.1 "Avenir Next","Helvetica Neue",Arial,sans-serif;margin:0 0 2mm}p.s{margin:0 0 6mm;color:#5d6b78}
+h2{font:700 13pt/1.2 "Helvetica Neue",Arial,sans-serif;margin:5mm 0 2mm;border-bottom:1.5px solid #e2973a;padding-bottom:1mm}
+table{width:100%;border-collapse:collapse;table-layout:fixed}td,th{border:1px solid #c9d3cf;padding:2mm;vertical-align:top;text-align:left}
+th{background:#f1f5f3;font-size:10pt;text-transform:uppercase;letter-spacing:.06em}
+.l{display:flex;gap:2mm;align-items:flex-start;margin:1mm 0}.b{width:4mm;height:4mm;border:1.2px solid #1d2734;border-radius:1mm;flex:none;margin-top:.6mm}
+.k{display:inline-block;font-size:9pt;font-weight:700;background:#f1f5f3;border-radius:2mm;padding:0 2mm}
+.cols{columns:2;column-gap:8mm}.cols3{columns:3;column-gap:6mm}.blk{break-inside:avoid;margin-bottom:3mm}
+.vide{height:7mm;border-bottom:1px dashed #c9d3cf}footer{margin-top:6mm;font-size:9pt;color:#5d6b78}
+@media screen{body{max-width:${paysage?"297mm":"210mm"};margin:10mm auto;padding:0 6mm}}</style></head><body>
+<h1>${e(titre)}</h1><p class="s">${e(sous)}</p>${corps}<footer>Les Willys · imprimé le ${new Date().toLocaleDateString("fr-BE",{day:"numeric",month:"long",year:"numeric"})}</footer></body></html>`; }
+async function faTelecharger(nom, html){
+  try{ const dl=await window.claude?.use?.("downloads"); if(!dl){ toast("Le téléchargement n'est pas disponible dans cette vue."); return; }
+    await dl.save({filename:nom,data:new Blob([html],{type:"text/html;charset=utf-8"})}); toast("Fiche prête : ouvre-la et imprime-la en A4"); }
+  catch(e){ toast(e&&e.code==="declined"?"Téléchargement annulé":"La fiche n'a pas pu être créée."); } }
+const faE = s => String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+/* ---------- La semaine : le plan de la semaine du foyer (préfixe sm) ---------- */ /* Collection semaines, un document par foyer et par semaine : id "<foyer>_<lundi>",
+   {foyer, semaine, priorites:[3 textes], taches:[{t, j:"lun".."dim"|"", d:bool, qui}], notes, by, at}. L'agenda, le menu et les anniversaires viennent des autres pages. */
+plusColl("semaines");
+const SM_ICO='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4M9 9v12M15 9v12"/></svg>';
+const smLundi = off => fjAdd(lundiIso(), 7*(off||0));
+const smJours = l => CZ_JOURS.map(([k,n],i)=>({k,n,d:fjAdd(l,i)}));
+const smId = l => myHome()+"_"+l;
+const smDoc = l => (S.semaines||[]).find(x=>x.id===smId(l))||{foyer:myHome(),semaine:l,priorites:["","",""],taches:[],notes:""};
+const smEvs = d => (S.events||[]).filter(e=>e.start&&e.start<=d&&(e.end||e.start)>=d);
+const smMenu = l => { const m=(S.menus||[]).find(x=>x.id===myHome()+"_"+l); return (m&&m.jours)||{}; };
+const smAnnivs = d => (typeof anNaiss==="function"?MEMBERS.filter(m=>{ const n=anNaiss(m.k); return n&&n.slice(5)===d.slice(5)&&n<d; }):[]);
+async function smEcrire(l, patch){ const d={...smDoc(l),...patch,foyer:myHome(),semaine:l,by:S.me,at:Date.now()}; delete d.id;
+  if(await save("semaines",d,smId(l))){ const i=S.semaines.findIndex(x=>x.id===smId(l)); if(i>=0) S.semaines[i]={id:smId(l),...d}; else S.semaines.push({id:smId(l),...d}); return true; } return false; }
+TUILES_PLUS.push(()=>{ const l=smLundi(0), d=smDoc(l), reste=(d.taches||[]).filter(x=>!x.d).length;
+  return {r:"semaine",t:"La semaine",c:"#2f6fb5",ico:SM_ICO,b:reste?String(reste):"",p:esc(reste?reste+" chose"+(reste>1?"s":"")+" à faire cette semaine":"Plan, priorités, menu · fiches à imprimer")}; });
+function renderSemaine(){
+  const off=S.smOff||0, l=smLundi(off), J=smJours(l), d=smDoc(l), menu=smMenu(l), t=todayIso(), pr=[0,1,2].map(i=>(d.priorites||[])[i]||""), tk=d.taches||[];
+  const titre=`${fmtD(l,{day:"numeric",month:"long"})} → ${fmtD(fjAdd(l,6),{day:"numeric",month:"long"})}`;
+  const tache=(x,i)=>`<label class="sm-t ${x.d?"sm-fait":""}"><input type="checkbox" data-smd="${i}" ${x.d?"checked":""}><span>${esc(x.t)}</span>${x.qui&&M[x.qui]?mag(x.qui,"sm"):""}<button type="button" class="sm-x" data-smdel="${i}" aria-label="Retirer">✕</button></label>`;
+  const jour=j=>{ const evs=smEvs(j.d), so=menu[j.k]&&menu[j.k].soir, mi=menu[j.k]&&menu[j.k].midi, an=smAnnivs(j.d), ts=tk.map((x,i)=>[x,i]).filter(([x])=>x.j===j.k);
+    return `<div class="sm-j ${j.d===t?"sm-auj":""}"><div class="sm-jh"><b>${esc(j.n)}</b><span>${esc(fmtD(j.d,{day:"numeric",month:"short"}))}</span></div>
+      ${an.map(m=>`<div class="sm-ev" style="--c:#e5b437">🎂 ${esc(m.n)}</div>`).join("")}
+      ${evs.map(e=>`<div class="sm-ev" style="--c:var(--m-${esc((e.people||[])[0]||"chouchou")},var(--accent))">${esc(e.title||"")}</div>`).join("")}
+      ${mi&&mi.titre?`<div class="sm-menu">☀️ ${esc(mi.titre)}</div>`:""}${so&&so.titre?`<div class="sm-menu">🍽 ${esc(so.titre)}</div>`:""}
+      ${ts.map(([x,i])=>tache(x,i)).join("")}</div>`; };
+  const libres=tk.map((x,i)=>[x,i]).filter(([x])=>!x.j);
+  const foyerM=(HM[myHome()]&&HM[myHome()].members)||[S.me];
+  return `${pageTete("Le plan de la semaine · "+esc(HM[myHome()]?HM[myHome()].n:""),"La semaine",`<div class="row" style="flex:none;gap:6px"><button class="react" style="flex:none" data-smgo="-1" aria-label="Semaine précédente">‹</button>${off?`<button class="react" style="flex:none" data-smgo="0">Cette semaine</button>`:""}<button class="react" style="flex:none" data-smgo="1" aria-label="Semaine suivante">›</button></div>`)}
+  <p class="hint" style="margin:6px 0 0;text-transform:none">${esc(titre)}${off===0?" · cette semaine":""}</p>
+  <div class="door sm-pr" style="margin-top:12px"><h3>⭐ Les 3 priorités de la semaine</h3>
+    ${pr.map((p,i)=>`<label class="sm-prl"><span>${i+1}</span><input data-smp="${i}" value="${esc(p)}" placeholder="${["Ex. mettre les joints aux fenêtres","Ex. réserver le resto pour l'anniversaire","Ex. préparer le brunch de la Saint-Nicolas"][i]}"></label>`).join("")}</div>
+  <div class="sm-grille" style="margin-top:12px">${J.map(jour).join("")}</div>
+  <div class="door" style="margin-top:12px"><h3>✅ À faire</h3>
+    <div class="row" style="gap:6px;margin-top:8px"><input id="sm-nt" placeholder="Ex. appeler le ramoneur" style="flex:3">
+      <select id="sm-nj" style="flex:1;min-width:110px"><option value="">Sans jour</option>${J.map(j=>`<option value="${j.k}">${esc(j.n)}</option>`).join("")}</select>
+      <select id="sm-nq" style="flex:1;min-width:110px"><option value="">Qui ?</option>${foyerM.map(k=>`<option value="${k}">${esc(M[k]?M[k].n:k)}</option>`).join("")}</select>
+      <button class="btn accent" style="flex:none" id="sm-add">Ajouter</button></div>
+    <div style="margin-top:8px">${libres.map(([x,i])=>tache(x,i)).join("")||(tk.length?"":`<p class="hint" style="margin:0">Rien encore. Ce qui a un jour se range dans la journée, le reste reste ici.</p>`)}</div></div>
+  <div class="door" style="margin-top:12px"><h3>📝 Espace libre</h3><textarea id="sm-notes" placeholder="Une idée, un rappel, ce qu'on ne veut pas oublier…" style="margin-top:8px">${esc(d.notes||"")}</textarea></div>
+  <div class="door" style="margin-top:12px"><h3>🖨 Fiches à imprimer (A4)</h3><p class="hint" style="margin:2px 0 8px">À afficher sur le frigo. Le fichier s'ouvre dans le navigateur, puis Imprimer.</p>
+    <div class="row" style="gap:6px"><button class="react" style="flex:none" data-fa="semaine">La semaine</button><button class="react" style="flex:none" data-fa="menu">Le menu de la semaine</button><button class="react" style="flex:none" data-fa="courses">La liste de courses</button><button class="react" style="flex:none" data-fa="routines">Les routines de la maison</button></div>
+    <div style="margin-top:8px">${wa(smTexte(l))}</div></div>`; }
+function smTexte(l){ const d=smDoc(l), J=smJours(l), menu=smMenu(l), lignes=[`🗓 Notre semaine du ${fmtD(l,{day:"numeric",month:"long"})}`];
+  const pr=(d.priorites||[]).filter(Boolean); if(pr.length) lignes.push("⭐ "+pr.join(" · "));
+  J.forEach(j=>{ const x=[...smEvs(j.d).map(e=>e.title),...(menu[j.k]&&menu[j.k].soir&&menu[j.k].soir.titre?["🍽 "+menu[j.k].soir.titre]:[]),...(d.taches||[]).filter(t=>t.j===j.k).map(t=>(t.d?"✓ ":"☐ ")+t.t)]; if(x.length) lignes.push(j.n+" : "+x.join(" · ")); });
+  return lignes.join("\n"); }
+function faSemaine(l){ const d=smDoc(l), J=smJours(l), menu=smMenu(l), tk=d.taches||[];
+  const cell=j=>[...smAnnivs(j.d).map(m=>`<div>🎂 ${faE(m.n)}</div>`),...smEvs(j.d).map(e=>`<div><span class="k">${faE(TYPES[e.type]||"")}</span> ${faE(e.title)}</div>`),
+    ...(menu[j.k]&&menu[j.k].soir&&menu[j.k].soir.titre?[`<div>🍽 ${faE(menu[j.k].soir.titre)}</div>`]:[]),...tk.filter(x=>x.j===j.k).map(x=>`<div class="l"><span class="b">${x.d?"✓":""}</span>${faE(x.t)}</div>`)].join("")+`<div class="vide"></div><div class="vide"></div>`;
+  const corps=`<h2>Les 3 priorités</h2>${[0,1,2].map(i=>`<div class="l"><span class="b"></span><b>${i+1}.</b>&nbsp;${faE((d.priorites||[])[i]||"")}</div>`).join("")}
+  <table style="margin-top:4mm"><tr>${J.map(j=>`<th>${faE(j.n)} ${faE(fmtD(j.d,{day:"numeric"}))}</th>`).join("")}</tr><tr>${J.map(j=>`<td style="height:95mm">${cell(j)}</td>`).join("")}</tr></table>
+  <div class="cols" style="margin-top:4mm"><div class="blk"><h2>À faire</h2>${tk.filter(x=>!x.j).map(x=>`<div class="l"><span class="b">${x.d?"✓":""}</span>${faE(x.t)}</div>`).join("")}<div class="vide"></div><div class="vide"></div></div>
+  <div class="blk"><h2>Espace libre</h2><div style="white-space:pre-wrap">${faE(d.notes||"")}</div><div class="vide"></div><div class="vide"></div></div></div>`;
+  return faDoc("La semaine des Willys", `${HM[myHome()]?HM[myHome()].n:""} · du ${fmtD(l,{day:"numeric",month:"long"})} au ${fmtD(fjAdd(l,6),{day:"numeric",month:"long",year:"numeric"})}`, corps, true); }
+function faMenu(l){ const J=smJours(l), menu=smMenu(l);
+  const c=(j,mo)=>{ const x=menu[j.k]&&menu[j.k][mo]; return x&&x.titre?faE(x.titre):""; };
+  const corps=`<table><tr><th style="width:24mm"></th>${J.map(j=>`<th>${faE(j.n)}</th>`).join("")}</tr>
+    <tr><th>Midi</th>${J.map(j=>`<td style="height:45mm">${c(j,"midi")}</td>`).join("")}</tr><tr><th>Soir</th>${J.map(j=>`<td style="height:55mm">${c(j,"soir")}</td>`).join("")}</tr></table>
+    <h2>Idées et restes à utiliser</h2><div class="vide"></div><div class="vide"></div><div class="vide"></div>`;
+  return faDoc("Le menu de la semaine", `${HM[myHome()]?HM[myHome()].n:""} · semaine du ${fmtD(l,{day:"numeric",month:"long"})}`, corps, true); }
+function faCourses(){ const d=listeDoc(), items=(Array.isArray(d.items)?d.items:[]).filter(i=>!i.d&&i.t), g={};
+  items.forEach(i=>{ const c=(i.c||"autre"); (g[c]=g[c]||[]).push(i.t); });
+  const nom=c=>({fruits:"Fruits et légumes",legumes:"Fruits et légumes",frais:"Frais",cremerie:"Crèmerie",boucherie:"Boucherie",viandes:"Viandes et poissons",epicerie:"Épicerie",boissons:"Boissons",surgeles:"Surgelés",hygiene:"Hygiène",entretien:"Entretien",bebe:"Bébé",autre:"Divers"})[c]||c.charAt(0).toUpperCase()+c.slice(1);
+  const corps=`<div class="cols">${Object.entries(g).map(([c,l])=>`<div class="blk"><h2>${faE(nom(c))}</h2>${l.map(t=>`<div class="l"><span class="b"></span>${faE(t)}</div>`).join("")}</div>`).join("")}
+    <div class="blk"><h2>À ajouter</h2>${'<div class="vide"></div>'.repeat(8)}</div></div>`;
+  return faDoc("La liste de courses", `${HM[myHome()]?HM[myHome()].n:""} · ${items.length} article${items.length>1?"s":""}`, corps, false); }
+
+/* ---------- Les routines de la maison (préfixe rt) ---------- */ /* Collection routines, un document par foyer : {taches:[{id, t, piece, freq:"jour"|"semaine"|"mois", qui}], by, at}.
+   Collection routinesfait : une coche par tâche et par période, id "<foyer>_<tâche>_<période>" (période = le jour, le lundi de la semaine ou le mois), {foyer, tache, periode, by, at}. */
+plusColl("routines"); plusColl("routinesfait");
+const RT_ICO='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21h16"/><path d="M6 21V10l6-5 6 5v11"/><path d="m9.5 14 2 2 3.5-4"/></svg>';
+const RT_PIECES=["Cuisine","Salle de bain","Chambres","Séjour","Linge","Entrée","Extérieur","Partout"];
+const RT_FREQ=[["jour","Chaque jour"],["semaine","Chaque semaine"],["mois","Chaque mois"]];
+const RT_TYPE=[["jour","Cuisine","Vaisselle et plan de travail"],["jour","Cuisine","Sortir les poubelles si pleines"],["jour","Séjour","Ranger 10 minutes avant le souper"],
+  ["semaine","Cuisine","Vider le frigo de ce qui est périmé"],["semaine","Salle de bain","Lavabo, douche et WC"],["semaine","Chambres","Changer les draps"],["semaine","Partout","Aspirateur"],
+  ["semaine","Linge","Lessives et repassage"],["semaine","Partout","Sortir le tri (PMC, papier)"],["mois","Cuisine","Four et micro-ondes"],["mois","Cuisine","Détartrer la bouilloire et la machine à café"],
+  ["mois","Partout","Poussières en hauteur"],["mois","Salle de bain","Nettoyer les joints et la bonde"],["mois","Extérieur","Terrasse et entrée"],["mois","Partout","Vérifier détecteurs de fumée"]];
+const rtPeriode = (f,d) => { d=d||todayIso(); if(f==="jour") return d; if(f==="mois") return d.slice(0,7); const x=new Date(d+"T12:00:00"); x.setDate(x.getDate()-((x.getDay()+6)%7)); return iso(x); };
+const rtDoc = () => (S.routines||[]).find(x=>x.id===myHome())||{taches:[]};
+const rtFait = x => (S.routinesfait||[]).find(r=>r.id===myHome()+"_"+x.id+"_"+rtPeriode(x.freq));
+async function rtEcrire(taches){ const d={taches,by:S.me,at:Date.now()}; if(await save("routines",d,myHome())){ const i=S.routines.findIndex(x=>x.id===myHome()); if(i>=0) S.routines[i]={id:myHome(),...d}; else S.routines.push({id:myHome(),...d}); render(); } }
+TUILES_PLUS.push(()=>{ const ts=rtDoc().taches||[]; if(!ts.length) return {r:"routines",t:"Routines maison",c:"#2c9a8a",ico:RT_ICO,b:"",p:"Le ménage partagé, pièce par pièce"};
+  const j=ts.filter(x=>x.freq==="jour"), s=ts.filter(x=>x.freq==="semaine"), fj=j.filter(rtFait).length, fs=s.filter(rtFait).length;
+  return {r:"routines",t:"Routines maison",c:"#2c9a8a",ico:RT_ICO,b:j.length-fj?String(j.length-fj):"",p:esc(`Aujourd'hui ${fj}/${j.length} · semaine ${fs}/${s.length}`)}; });
+function renderRoutines(){
+  const ts=rtDoc().taches||[], foyerM=(HM[myHome()]&&HM[myHome()].members)||[S.me];
+  const ligne=x=>{ const f=rtFait(x); return `<label class="sm-t ${f?"sm-fait":""}"><input type="checkbox" data-rt="${esc(x.id)}" ${f?"checked":""}><span>${esc(x.t)} <span class="tag">${esc(x.piece||"")}</span></span>${f&&M[f.by]?mag(f.by,"sm"):(x.qui&&M[x.qui]?`<span style="opacity:.55">${mag(x.qui,"sm")}</span>`:"")}<button type="button" class="sm-x" data-rtdel="${esc(x.id)}" aria-label="Retirer">✕</button></label>`; };
+  const bloc=([f,n])=>{ const l=ts.filter(x=>x.freq===f); if(!l.length) return ""; const fa=l.filter(rtFait).length, pc=Math.round(fa/l.length*100);
+    return `<div class="door" style="margin-top:12px"><div class="section-head"><h3>${esc(n)}</h3><span class="cnt">${fa} / ${l.length}</span></div>
+      <div style="height:8px;border-radius:5px;background:var(--line);overflow:hidden;margin:8px 0"><i style="display:block;height:100%;width:${pc}%;background:var(--ok)"></i></div>
+      ${RT_PIECES.filter(p=>l.some(x=>x.piece===p)).concat(l.some(x=>!RT_PIECES.includes(x.piece))?["Autre"]:[]).map(p=>l.filter(x=>p==="Autre"?!RT_PIECES.includes(x.piece):x.piece===p).map(ligne).join("")).join("")}</div>`; };
+  return `${pageTete("Le ménage partagé · "+esc(HM[myHome()]?HM[myHome()].n:""),"Routines de la maison","")}
+  <p class="hint" style="margin:6px 0 0">On coche quand c'est fait : l'aimant de celui qui l'a fait s'affiche, et tout repart à zéro le lendemain, le lundi ou le 1er du mois.</p>
+  ${ts.length?RT_FREQ.map(bloc).join(""):`<div class="empty" style="margin-top:12px"><p style="margin:0 0 10px">Pas encore de routine.</p><button class="btn accent" id="rt-type">Démarrer avec la liste type (${RT_TYPE.length} tâches)</button></div>`}
+  <div class="door" style="margin-top:12px"><h3>Ajouter une routine</h3>
+    <div class="row" style="gap:6px;margin-top:8px"><input id="rt-t" placeholder="Ex. arroser les plantes" style="flex:3">
+      <select id="rt-p" style="flex:1;min-width:110px">${RT_PIECES.map(p=>`<option>${esc(p)}</option>`).join("")}</select>
+      <select id="rt-f" style="flex:1;min-width:120px">${RT_FREQ.map(([k,n])=>`<option value="${k}">${esc(n)}</option>`).join("")}</select>
+      <select id="rt-q" style="flex:1;min-width:100px"><option value="">Tout le monde</option>${foyerM.map(k=>`<option value="${k}">${esc(M[k]?M[k].n:k)}</option>`).join("")}</select>
+      <button class="btn accent" style="flex:none" id="rt-add">Ajouter</button></div></div>
+  ${ts.length?`<div class="row" style="margin-top:12px;gap:6px"><button class="react" style="flex:none" data-fa="routines">🖨 Fiche A4 à afficher</button></div>`:""}`; }
+function faRoutines(){ const ts=rtDoc().taches||[];
+  const corps=RT_FREQ.map(([f,n])=>{ const l=ts.filter(x=>x.freq===f); if(!l.length) return "";
+    const cols=f==="jour"?CZ_JOURS.map(j=>j[0].slice(0,2)):f==="semaine"?["S1","S2","S3","S4","S5"]:["M1","M2","M3"];
+    return `<h2>${faE(n)}</h2><table><tr><th style="width:45%">Tâche</th><th style="width:15%">Pièce</th>${cols.map(c=>`<th style="text-align:center">${faE(c)}</th>`).join("")}</tr>${l.map(x=>`<tr><td>${faE(x.t)}</td><td>${faE(x.piece||"")}</td>${cols.map(()=>"<td></td>").join("")}</tr>`).join("")}</table>`; }).join("");
+  return faDoc("Les routines de la maison", (HM[myHome()]?HM[myHome()].n:"")+" · on coche quand c'est fait", corps, false); }
+plusRoute("semaine",renderSemaine,"La semaine","regarde la semaine");
+plusRoute("routines",renderRoutines,"Routines maison","regarde les routines");
+BIND_PLUS.push(root=>{
+  root.querySelectorAll("[data-smgo]").forEach(b=>b.onclick=()=>{ S.smOff=b.dataset.smgo==="0"?0:(S.smOff||0)+ +b.dataset.smgo; render(); });
+  const l=smLundi(S.smOff||0);
+  root.querySelectorAll("[data-smp]").forEach(inp=>inp.onchange=()=>{ const pr=[0,1,2].map(i=>(smDoc(l).priorites||[])[i]||""); pr[+inp.dataset.smp]=inp.value.trim(); smEcrire(l,{priorites:pr}); });
+  const nt=root.querySelector("#sm-notes"); if(nt) nt.onchange=()=>smEcrire(l,{notes:nt.value});
+  const add=root.querySelector("#sm-add"); if(add) add.onclick=async()=>{ const t=root.querySelector("#sm-nt").value.trim(); if(!t){ toast("Écris la chose à faire"); return; }
+    const tk=[...(smDoc(l).taches||[]),{t,j:root.querySelector("#sm-nj").value,qui:root.querySelector("#sm-nq").value,d:false}]; if(await smEcrire(l,{taches:tk})) render(); };
+  root.querySelectorAll("[data-smd]").forEach(c=>c.onchange=async()=>{ const tk=(smDoc(l).taches||[]).map(x=>({...x})); const x=tk[+c.dataset.smd]; if(!x) return; x.d=c.checked; if(await smEcrire(l,{taches:tk})) render(); });
+  root.querySelectorAll("[data-smdel]").forEach(b=>b.onclick=async e=>{ e.preventDefault(); const tk=(smDoc(l).taches||[]).filter((_,i)=>i!==+b.dataset.smdel); if(await smEcrire(l,{taches:tk})) render(); });
+  root.querySelectorAll("[data-fa]").forEach(b=>b.onclick=()=>{ const k=b.dataset.fa, d=todayIso();
+    if(k==="semaine") faTelecharger("semaine-"+l+".html",faSemaine(l));
+    else if(k==="menu") faTelecharger("menu-"+l+".html",faMenu(l));
+    else if(k==="courses"){ if(typeof isUnlocked==="function"&&!isUnlocked(myHome())){ toast("Ouvre d'abord l'espace du foyer dans Chez nous"); return; } faTelecharger("courses-"+d+".html",faCourses()); }
+    else if(k==="routines"){ if(!(rtDoc().taches||[]).length){ toast("Ajoute d'abord des routines"); location.hash="routines"; return; } faTelecharger("routines-maison.html",faRoutines()); } });
+  const ty=root.querySelector("#rt-type"); if(ty) ty.onclick=()=>rtEcrire(RT_TYPE.map(([f,p,t],i)=>({id:"r"+Date.now().toString(36)+i,t,piece:p,freq:f,qui:""})));
+  const ra=root.querySelector("#rt-add"); if(ra) ra.onclick=()=>{ const t=root.querySelector("#rt-t").value.trim(); if(!t){ toast("Écris la routine"); return; }
+    rtEcrire([...(rtDoc().taches||[]),{id:"r"+Date.now().toString(36),t,piece:root.querySelector("#rt-p").value,freq:root.querySelector("#rt-f").value,qui:root.querySelector("#rt-q").value}]); };
+  root.querySelectorAll("[data-rtdel]").forEach(b=>b.onclick=e=>{ e.preventDefault(); if(!confirm("Retirer cette routine ?")) return; rtEcrire((rtDoc().taches||[]).filter(x=>x.id!==b.dataset.rtdel)); });
+  root.querySelectorAll("[data-rt]").forEach(c=>c.onchange=async()=>{ const x=(rtDoc().taches||[]).find(y=>y.id===c.dataset.rt); if(!x||!S.db) return; const id=myHome()+"_"+x.id+"_"+rtPeriode(x.freq);
+    try{ if(c.checked){ const d={foyer:myHome(),tache:x.id,periode:rtPeriode(x.freq),by:S.me,at:Date.now()}; await S.db.collection("routinesfait").doc(id).set(d); if(!S.routinesfait.some(r=>r.id===id)) S.routinesfait.push({id,...d}); }
+      else { await S.db.collection("routinesfait").doc(id).delete(); S.routinesfait=S.routinesfait.filter(r=>r.id!==id); } render(); }catch{ toast("Pas enregistré."); } });
+});
+
+/* ---------- L'écran de la maison : un cadre mural pour une vieille tablette (préfixe cd) ---------- */ /* Plein écran, sans menus : l'heure, la météo et la tenue des petites, l'agenda du jour de toute la famille,
+   le marché, ce soir à la maison, les prochains jours, les anniversaires, et les photos du mur qui défilent. L'écran reste allumé (Wake Lock) ; la nuit, il s'assombrit. */
+const CD_ICO='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><rect x="7" y="6" width="10" height="9" rx="1"/><path d="M10 18h4"/></svg>';
+const cdOn = () => (location.hash||"").replace(/^#/,"")==="cadre";
+const cdNuit = () => { const h=new Date().getHours(); return h>=22||h<6; };
+const cdHeure = () => new Date().toLocaleTimeString("fr-BE",{hour:"2-digit",minute:"2-digit"});
+const cdPhotos = () => (S.photos||[]).filter(x=>photoOk(x.url)).sort((a,b)=>(b.at||0)-(a.at||0)).slice(0,40);
+TUILES_PLUS.push(()=>({r:"cadre",t:"Écran de la maison",c:"#8a5cc2",ico:CD_ICO,b:"",p:"Pour une tablette au mur : l'heure, la météo, la journée, les photos"}));
+function renderCadre(){
+  const t=todayIso(), evs=smEvs(t), f=HOME_OF[S.me]||myHome(), jj=CZ_JOURS[(new Date().getDay()+6)%7][0];
+  let meteo=""; try{ const j=mtJour(); if(j&&j.tmin!=null){ const te=mtTenue(j); meteo=`<div class="cd-mt"><span class="cd-mti">${MT_ICO(+j.code)}</span><div><b>${j.demain?"Demain · ":""}${Math.round(+j.tmin)}° → ${Math.round(+j.tmax)}°</b><span>${esc(j.resume||"")}</span><span>👧 ${esc(te.petites)}</span></div></div>`; } }catch{}
+  let marche=""; try{ marche=agUne("haut")||""; }catch{}
+  const menu=((S.menus||[]).find(x=>x.id===f+"_"+lundiIso())||{}).jours||{}, soir=menu[jj]&&menu[jj].soir;
+  let souper=""; try{ const d=(S.souper||[]).find(x=>x.id===t+"_"+f), rep=(d&&d.rep)||{}, mb=spMembres(f); const oui=mb.filter(m=>rep[m.k]==="oui"||rep[m.k]==="tard");
+    souper=`<div class="cd-b"><div class="cd-k">Ce soir à la maison</div>${soir&&soir.titre?`<b class="cd-g">🍽 ${esc(soir.titre)}</b>`:`<span class="cd-s">Pas encore de menu</span>`}<div class="cd-mags">${mb.map(m=>`<span class="cd-mg ${rep[m.k]?"cd-"+rep[m.k]:""}">${mag(m.k)}<i>${rep[m.k]==="oui"?"✓":rep[m.k]==="tard"?"🕗":rep[m.k]==="non"?"✗":"?"}</i></span>`).join("")}</div>${oui.length?`<span class="cd-s">${oui.length} à table</span>`:""}</div>`; }catch{}
+  const prochains=[1,2,3,4].map(n=>{ const d=fjAdd(t,n), l=(S.events||[]).filter(e=>e.start===d); return l.length?`<div class="cd-pj"><b>${esc(fmtD(d,{weekday:"long",day:"numeric"}))}</b>${l.slice(0,3).map(e=>`<span>${esc(e.title||"")}</span>`).join("")}</div>`:""; }).join("");
+  let annivs=""; try{ annivs=MEMBERS.map(m=>({m,p:anProchain(m.k)})).filter(x=>x.p&&x.p.jours<=30).sort((a,b)=>a.p.jours-b.p.jours).map(x=>`<div class="cd-an">${mag(x.m.k,"sm")} <b>${esc(x.m.n)}</b> ${x.p.jours===0?"🎂 aujourd'hui !":"dans "+x.p.jours+" j"}</div>`).join(""); }catch{}
+  const mot=(S.ideas||[]).filter(x=>x.kind==="mot"&&Date.now()-(+x.at||0)<7*864e5).sort((a,b)=>(b.at||0)-(a.at||0))[0];
+  const ph=cdPhotos(), p=ph.length?ph[(S.cdI||0)%ph.length]:null;
+  return `<div class="cd ${cdNuit()?"cd-nuit":""}" id="cd">
+    <div class="cd-g1">
+      <div class="cd-h" id="cd-h">${esc(cdHeure())}</div>
+      <div class="cd-d">${esc(fmtD(t,{weekday:"long",day:"numeric",month:"long"}))}</div>
+      ${meteo}
+      <div class="cd-b"><div class="cd-k">Aujourd'hui</div>${evs.length?evs.slice(0,6).map(e=>`<div class="cd-ev" style="--c:var(--m-${esc((e.people||[])[0]||"chouchou")},var(--accent))"><b>${esc(e.title||"")}</b><span class="stack">${(e.people||[]).slice(0,5).map(k=>mag(k,"sm")).join("")}</span></div>`).join(""):`<span class="cd-s">Rien à l'agenda : une journée tranquille.</span>`}</div>
+      ${marche?`<div class="cd-mar">${marche}</div>`:""}
+    </div>
+    <div class="cd-g2">
+      ${p?`<figure class="cd-ph"><img id="cd-img" src="${esc(p.url)}" alt="${esc(p.legend||"")}"><figcaption id="cd-cap">${esc(p.legend||"")}</figcaption></figure>`:`<div class="cd-ph cd-ph0">Ajoutez des photos au mur : elles défileront ici.</div>`}
+      ${mot?`<div class="cd-mot">✍️ ${esc(mot.title||"")} <small>— ${esc(M[mot.by]?M[mot.by].n:"")}</small></div>`:""}
+      ${souper}
+      ${prochains||annivs?`<div class="cd-b"><div class="cd-k">Les prochains jours</div>${prochains}${annivs}</div>`:""}
+    </div>
+    <div class="cd-bar"><button type="button" class="cd-btn" id="cd-fs">⛶ Plein écran</button><a class="cd-btn" href="#accueil">✕ Quitter</a></div>
+  </div>`; }
+plusRoute("cadre",renderCadre,"Écran de la maison","regarde l'écran de la maison");
+BIND_PLUS.push(root=>{
+  const on=cdOn(), tabs=document.getElementById("tabs");
+  document.documentElement.classList.toggle("cd-actif",on);
+  if(!on){ try{ window.__cdLock&&window.__cdLock.release(); }catch{} window.__cdLock=null; return; }
+  if(tabs) tabs.hidden=true;
+  try{ if(!window.__cdLock&&navigator.wakeLock) navigator.wakeLock.request("screen").then(l=>{ window.__cdLock=l; l.addEventListener("release",()=>{ window.__cdLock=null; }); }).catch(()=>{}); }catch{}
+  const fs=root.querySelector("#cd-fs"); if(fs) fs.onclick=()=>{ try{ document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen(); }catch{ toast("Le plein écran n'est pas permis ici : utilise « Ajouter à l'écran d'accueil »."); } };
+});
+if(!window.__cdTimer) window.__cdTimer=setInterval(()=>{ try{ if(!cdOn()) return; const h=document.getElementById("cd-h"); if(h) h.textContent=cdHeure();
+  const cd=document.getElementById("cd"); if(cd) cd.classList.toggle("cd-nuit",cdNuit());
+  const ph=cdPhotos(); if(ph.length>1&&Date.now()-(window.__cdPh||0)>20000){ window.__cdPh=Date.now(); S.cdI=((S.cdI||0)+1)%ph.length; const im=document.getElementById("cd-img"), cp=document.getElementById("cd-cap"); const p=ph[S.cdI]; if(im){ im.src=p.url; im.alt=p.legend||""; } if(cp) cp.textContent=p.legend||""; }
+  if(Date.now()-(window.__cdRe||0)>5*60e3){ window.__cdRe=Date.now(); if(!document.querySelector(".sheet-bg")) render(); } }catch{} },10000);
+document.addEventListener("visibilitychange",()=>{ try{ if(document.visibilityState==="visible"&&cdOn()&&!window.__cdLock&&navigator.wakeLock) navigator.wakeLock.request("screen").then(l=>{ window.__cdLock=l; l.addEventListener("release",()=>{ window.__cdLock=null; }); }).catch(()=>{}); }catch{} });
 /* ---------- Rendu ---------- */
 
 /* ---------- L'énergie de la maison (préfixe wen) ---------- */ /* Repris de l'onglet Énergie de la Cagnotte le 15/11/2026. Collection energie {type:"elec_jour"|"elec_nuit"|"eau"|"carport"|"radiateurs"|"zaptec"|"injection"|"onduleur"|"bruleur"|"thermostat", date, index, lu, note, par, cree} ou {type:"mazout", date, litres, prix, total, fournisseur} ou {type:"prix_mazout", date, prix, source} ou {type:"solaire_an", annee, kwh, injecte, revenu} ou {type:"bois", date, steres, prix, total} ; réglages dans meta/energie. Visible dans La maison → L'énergie (Luc et Loulou). */
