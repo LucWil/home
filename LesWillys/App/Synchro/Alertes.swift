@@ -102,3 +102,43 @@ struct BanniereActivite: View {
         }
     }
 }
+
+/// La question des notifications, posée au bon moment (règles d'Apple) : une carte sur l'accueil,
+/// et l'iPhone ne demande l'autorisation que si l'on touche « Activer ».
+struct CarteNotifications: View {
+    @State private var statut: UNAuthorizationStatus?
+    @AppStorage("carteNotifications.plusTard") private var plusTard = false
+
+    var body: some View {
+        // Un VStack (et pas un Group) : vide, il existe quand même et sa `.task` s'exécute.
+        VStack(spacing: 0) {
+            if statut == .notDetermined && !plusTard {
+                Porte(teinte: Theme.accent) {
+                    HStack(alignment: .top, spacing: 12) {
+                        Image(systemName: "bell.badge").font(.title2).foregroundStyle(Theme.accent)
+                            .symbolEffect(.bounce, value: statut)
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Être prévenu ?").font(.willys(.headline))
+                            Text("Une notification quand quelqu'un de la famille range, mange, laisse un mot ou prévoit une sortie.")
+                                .font(.willys(.subheadline)).foregroundStyle(.secondary)
+                        }
+                    }
+                    HStack {
+                        Button("Activer") {
+                            Task {
+                                await Alertes.demanderAutorisation()
+                                statut = await UNUserNotificationCenter.current().notificationSettings().authorizationStatus
+                                Retour.succes()
+                            }
+                        }
+                        .buttonStyle(.borderedProminent)
+                        Button("Plus tard") { avecAnimation { plusTard = true } }.buttonStyle(.bordered)
+                    }
+                    .buttonBorderShape(.capsule)
+                }
+                .transition(.colle)
+            }
+        }
+        .task { statut = await UNUserNotificationCenter.current().notificationSettings().authorizationStatus }
+    }
+}

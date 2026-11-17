@@ -17,25 +17,29 @@ enum Famille {
         Membre(id: "manhattan", nom: "Manhattan", couleur: Color(hex: 0xC8456B)),
         Membre(id: "julien",    nom: "Julien",    couleur: Color(hex: 0x2C9A8A)),
         Membre(id: "ambre",     nom: "Ambre",     couleur: Color(hex: 0xD98A1F)),
-        Membre(id: "robin",     nom: "Robin",     couleur: Color(hex: 0x5F8A2E)),
         Membre(id: "leonor",    nom: "Léonor",    couleur: Color(hex: 0xE07AA0), enfant: true),
         Membre(id: "amalia",    nom: "Amalia",    couleur: Color(hex: 0xE5B437), enfant: true),
     ]
     static let adultes = membres.filter { !$0.enfant }
     static let enfants = membres.filter { $0.enfant }
-    static func membre(_ id: String?) -> Membre? { membres.first { $0.id == id } }
+    /// Ceux qui ne sont plus dans l'app : leurs anciennes données gardent un nom,
+    /// mais ils n'apparaissent plus dans les listes, les aimants ni l'écran « Qui rentre ? ».
+    static let anciens: [Membre] = [
+        Membre(id: "robin", nom: "Robin", couleur: Color(hex: 0x5F8A2E)),
+    ]
+    static func membre(_ id: String?) -> Membre? { (membres + anciens).first { $0.id == id } }
+    static func estActif(_ id: String?) -> Bool { membres.contains { $0.id == id } }
 
     /// Les quatre foyers ; chaque foyer a son stock, ses tickets et son boni.
     static let foyers: [(id: String, nom: String, membres: [String])] = [
         ("luc",   "Luc et Loulou",       ["chouchou", "loulou"]),
         ("mj",    "Manhattan et Julien", ["manhattan", "julien"]),
         ("ambre", "Ambre",               ["ambre"]),
-        ("robin", "Robin",               ["robin"]),
     ]
     static func foyer(de membre: String?) -> String? {
         foyers.first { $0.membres.contains(membre ?? "") }?.id
     }
-    static func nomFoyer(_ id: String?) -> String { foyers.first { $0.id == id }?.nom ?? "" }
+    static func nomFoyer(_ id: String?) -> String { id == "frejus" ? "Fréjus" : foyers.first { $0.id == id }?.nom ?? "" }
 }
 
 /// Types de dates du calendrier, avec la même étiquette que l'app web.
@@ -84,8 +88,47 @@ enum Categorie {
     static let toutes: [(id: String, nom: String)] = [
         ("legumes", "Légumes"), ("fruits", "Fruits"), ("viandes", "Viandes"),
         ("poissons", "Poissons"), ("cremerie", "Crèmerie"), ("pains", "Pains et pâtes"),
-        ("plats", "Plats préparés"), ("epices", "Épices"), ("autre", "Autre"),
+        ("plats", "Plats préparés"), ("epices", "Épices"),
+        ("conserves", "Conserves"), ("epicerie", "Épicerie sèche"), ("petitdej", "Petit-déjeuner"),
+        ("boissons", "Boissons"), ("autre", "Autre"),
     ]
+    /// Les catégories qu'on s'attend à trouver à chaque endroit, dans l'ordre où on les cherche :
+    /// ce qui n'a aucun article apparaît comme « il n'y en a pas », pour voir d'un coup d'œil ce qui manque.
+    static func attendues(dans rangement: String) -> [String] {
+        switch rangement {
+        case "armoire": ["pains", "epicerie", "conserves", "petitdej", "epices", "boissons", "plats", "autre"]
+        case "frais": ["legumes", "fruits", "cremerie", "viandes", "poissons", "pains", "plats", "autre"]
+        default: toutes.map(\.id)
+        }
+    }
+    /// Les mots qui trahissent une catégorie (sans accents, au singulier).
+    private static let motsCles: [String: [String]] = [
+        "pains": ["pate", "spaghetti", "tagliatelle", "macaroni", "penne", "fusilli", "nouille", "pain", "biscotte", "wrap", "tortilla", "baguette"],
+        "epicerie": ["riz", "farine", "sucre", "sel", "huile", "vinaigre", "semoule", "quinoa", "lentille", "couscous", "levure", "chocolat", "biscuit", "sauce", "ketchup", "mayonnaise", "moutarde", "miel", "bouillon", "chips"],
+        "conserves": ["conserve", "thon", "sardine", "maquereau", "concentre", "mais", "boite", "bocal", "cornichon", "olive", "soupe", "pele", "pelee"],
+        "petitdej": ["cereale", "muesli", "confiture", "tartiner", "nutella", "cafe", "the", "cacao", "flocon", "avoine", "granola", "speculoos"],
+        "boissons": ["eau", "jus", "soda", "coca", "biere", "vin", "sirop", "limonade", "lait", "cola", "tonic"],
+        "epices": ["epice", "poivre", "paprika", "cumin", "curcuma", "cannelle", "thym", "origan", "basilic", "curry", "muscade", "piment", "herbe", "laurier", "persil"],
+        "legumes": ["terre", "carotte", "poireau", "oignon", "courgette", "salade", "chou", "tomate", "aubergine", "poivron", "champignon", "epinard", "radis", "ail", "haricot", "concombre", "courge", "chicon", "celeri", "legume"],
+        "fruits": ["pomme", "poire", "banane", "orange", "citron", "fraise", "framboise", "cerise", "raisin", "kiwi", "clementine", "ananas", "fruit", "prune", "peche"],
+        "cremerie": ["lait", "yaourt", "fromage", "beurre", "creme", "oeuf", "mozzarella", "gruyere", "skyr", "raclette"],
+        "viandes": ["poulet", "boeuf", "porc", "jambon", "saucisse", "hache", "lardon", "steak", "veau", "dinde", "agneau", "viande", "saucisson"],
+        "poissons": ["saumon", "cabillaud", "poisson", "crevette", "colin", "truite", "moule"],
+        "plats": ["lasagne", "pizza", "quiche", "plat", "croquette", "gratin", "nugget", "ravioli"],
+    ]
+
+    /// La catégorie la plus probable d'après le nom, parmi celles qui existent à cet endroit (nil si rien ne ressemble).
+    static func deviner(nom: String, dans rangement: String) -> String? {
+        let propre = nom.folding(options: [.diacriticInsensitive, .caseInsensitive], locale: Locale(identifier: "fr_BE")).lowercased()
+        let mots = propre.split { !$0.isLetter }.map(String.init)
+        for id in attendues(dans: rangement) where id != "autre" {
+            for k in motsCles[id] ?? [] where mots.contains(where: { $0 == k || $0 == k + "s" || (k.count >= 5 && $0.hasPrefix(k)) }) {
+                return id
+            }
+        }
+        return nil
+    }
+    static func nom(_ id: String) -> String { toutes.first { $0.id == id }?.nom ?? "Autre" }
     static func couleur(_ id: String) -> Color {
         switch id {
         case "viandes": Color(hex: 0xC8456B)
@@ -94,6 +137,12 @@ enum Categorie {
         case "legumes": Color(hex: 0x5F8A2E)
         case "pains": Color(hex: 0xD98A1F)
         case "fruits": Color(hex: 0xE07AA0)
+        case "conserves": Color(hex: 0x8A5CC2)
+        case "epicerie": Color(hex: 0xB8742A)
+        case "petitdej": Color(hex: 0xC99A1B)
+        case "boissons": Color(hex: 0x2A7FA8)
+        case "epices": Color(hex: 0xC0582F)
+        case "cremerie": Color(hex: 0x2C9A8A)
         default: Color(hex: 0x5D6B78)
         }
     }

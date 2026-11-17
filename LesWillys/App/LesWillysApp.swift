@@ -2,6 +2,7 @@ import SwiftUI
 import SwiftData
 import CloudKit
 import UIKit
+import UserNotifications
 
 @main
 struct LesWillysApp: App {
@@ -26,6 +27,7 @@ struct LesWillysApp: App {
 final class AppDelegate: NSObject, UIApplicationDelegate {
     func application(_ application: UIApplication, didFinishLaunchingWithOptions options: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
         application.registerForRemoteNotifications()
+        UNUserNotificationCenter.current().delegate = Alertes.partagee   // toucher une notification ouvre le bon onglet
         Theme.appliquerAuxBarres()
         return true
     }
@@ -46,15 +48,14 @@ final class SceneDelegate: NSObject, UIWindowSceneDelegate {
 
 /// Les six onglets, comme dans l'app web.
 enum Onglet: String, CaseIterable, Identifiable {
-    case accueil, calendrier, voyages, cuisine, weekends, chezNous = "chez-nous"
+    case accueil, calendrier, cuisine, loisirs, chezNous = "chez-nous"
     var id: String { rawValue }
     var titre: String {
         switch self {
         case .accueil: "La famille"
         case .calendrier: "Calendrier"
-        case .voyages: "Voyages"
         case .cuisine: "Cuisine"
-        case .weekends: "Week-ends"
+        case .loisirs: "Loisirs"
         case .chezNous: "Chez nous"
         }
     }
@@ -62,9 +63,8 @@ enum Onglet: String, CaseIterable, Identifiable {
         switch self {
         case .accueil: "heart"
         case .calendrier: "calendar"
-        case .voyages: "airplane"
         case .cuisine: "frying.pan"
-        case .weekends: "sun.max"
+        case .loisirs: "ticket"
         case .chezNous: "house"
         }
     }
@@ -74,8 +74,13 @@ struct RacineView: View {
     @Environment(\.modelContext) private var ctx
     @Environment(\.colorScheme) private var scheme
     @Environment(\.scenePhase) private var phase
-    @State private var moi: String? = Base.moi
-    @State private var onglet: Onglet = .accueil
+    @State private var moi: String? = RacineView.demo("demoMoi") ?? Base.moi.flatMap { Famille.estActif($0) ? $0 : nil }
+    @State private var onglet: Onglet = RacineView.demo("demoOnglet").flatMap(Onglet.init(rawValue:)) ?? .accueil
+
+    /// Pour les captures d'écran automatiques (simulateur, GitHub) : `-demoMoi loulou -demoOnglet loisirs`
+    /// au lancement choisit le membre et l'onglet. Sans effet dans l'usage normal.
+    static func demo(_ cle: String) -> String? { UserDefaults.standard.string(forKey: cle) }
+    @State private var partieLoisirs: LoisirsView.Partie = RacineView.demo("demoLoisirs").flatMap(LoisirsView.Partie.init(cle:)) ?? .voyages
     @State private var boniOuvert = false
 
     var body: some View {
@@ -96,7 +101,6 @@ struct RacineView: View {
                 .task(id: moi) {
                     noterVisite(moi)
                     await SynchroFamille.partagee.demarrer()
-                    await Alertes.demanderAutorisation()
                     // Tant que l'app est ouverte, on redit « je suis là » toutes les minutes.
                     while !Task.isCancelled {
                         try? await Task.sleep(for: .seconds(60))
@@ -122,6 +126,8 @@ struct RacineView: View {
         // Les widgets ouvrent l'app sur le bon onglet : willys://cuisine, willys://calendrier, willys://boni…
         .onOpenURL { url in
             if url.host == "boni" { boniOuvert = true }
+            // Voyages et week-ends vivent maintenant dans Loisirs (liens du fil, des widgets, des notifications)
+            else if let p = LoisirsView.Partie(cle: url.host ?? "") { partieLoisirs = p; onglet = .loisirs }
             else if let o = Onglet(rawValue: url.host ?? "") { onglet = o }
         }
     }
@@ -130,9 +136,8 @@ struct RacineView: View {
         switch o {
         case .accueil: AccueilView(moi: moi)
         case .calendrier: CalendrierView(moi: moi)
-        case .voyages: IdeesView(genre: "voyage", moi: moi)
         case .cuisine: CuisineView(moi: moi)
-        case .weekends: IdeesView(genre: "weekend", moi: moi)
+        case .loisirs: LoisirsView(moi: moi, partie: $partieLoisirs)
         case .chezNous: ChezNousView(moi: moi) { self.moi = nil; Base.moi = nil }
         }
     }

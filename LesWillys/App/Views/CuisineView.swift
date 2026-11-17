@@ -15,13 +15,22 @@ struct CuisineView: View {
     @State private var thermomix: Recette?
     @State private var boni = false
     @State private var recherche = ""
+    @State private var aReclasser: Rangement?
+    @State private var fermees: Set<String> = []     // les catégories repliées (toutes ouvertes au départ)
+    @Query private var evenements: [Evenement]
+    /// "frejus" pour les placards de la maison de Fréjus, vide pour ceux du foyer.
+    @AppStorage(Frejus.cleLieu, store: Base.reglages) private var lieu = ""
+    /// Le choix a été fait par l'app (séjour en cours) : il s'efface tout seul après le séjour.
+    @AppStorage("cuisine.lieu.auto", store: Base.reglages) private var lieuAuto = false
+    private static var basculeVue = false
 
     enum Partie: String, CaseIterable, Identifiable {
         case aManger = "À manger", frais = "Le frais", surgelateur = "Surgélateur", armoire = "Armoires", recettes = "Recettes"
         var id: String { rawValue }
     }
 
-    private var foyer: String { Famille.foyer(de: moi) ?? "" }
+    private var foyer: String { lieu == Frejus.cle ? Frejus.cle : (Famille.foyer(de: moi) ?? "") }
+    private var aFrejus: Bool { foyer == Frejus.cle }
     private var monStock: [Article] {
         stock.filter { $0.foyer == foyer && (recherche.isEmpty || $0.nom.localizedCaseInsensitiveContains(recherche)) }
     }
@@ -30,8 +39,8 @@ struct CuisineView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 IciAussi(onglet: "cuisine", moi: moi, visites: visites)
-                Picker("", selection: $partie) { ForEach(Partie.allCases) { Text($0.rawValue).tag($0) } }
-                    .pickerStyle(.segmented)
+                if aFrejus { bandeauFrejus }
+                barreParties
                 switch partie {
                 case .aManger: aManger
                 case .frais: liste(.frais)
@@ -46,13 +55,76 @@ struct CuisineView: View {
         .searchable(text: $recherche, prompt: "Chercher dans le stock")
         .background(Theme.emaille(scheme))
         .navigationTitle("Cuisine · \(Famille.nomFoyer(foyer))")
+        .onAppear(perform: basculer)
         .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Menu {
+                    Picker("Quels placards ?", selection: Binding(get: { lieu }, set: { lieu = $0; lieuAuto = false })) {
+                        Text(Famille.nomFoyer(Famille.foyer(de: moi))).tag("")
+                        Text("La maison de Fréjus").tag(Frejus.cle)
+                    }
+                } label: { Label("Quels placards ?", systemImage: aFrejus ? "sun.max" : "house") }
+            }
             ToolbarItem { Button { boni = true } label: { Label("Budget et boni", systemImage: "eurosign.circle") } }
             ToolbarItem { Button { ajout = partie == .surgelateur ? .surgelateur : partie == .armoire ? .armoire : .frais } label: { Label("Ranger quelque chose", systemImage: "plus") } }
         }
         .sheet(item: $ajout) { r in NavigationStack { FormulaireArticle(moi: moi, foyer: foyer, rangement: r) } }
         .sheet(isPresented: $boni) { NavigationStack { BoniView(moi: moi) } }
+        .sheet(item: $aReclasser) { r in
+            NavigationStack { ReclasserView(articles: monStock.filter { $0.rangement == r.rawValue }, rangement: r) }
+        }
         .fullScreenCover(item: $thermomix) { ModeThermomix(recette: $0) }
+    }
+
+    /// Pendant un séjour à Fréjus, la cuisine montre d'elle-même les placards de Fréjus (une fois par lancement) ;
+    /// après le séjour, elle revient au foyer si c'est l'app qui avait basculé.
+    private func basculer() {
+        let enSejour = Frejus.sejour(evenements, moi: moi) != nil
+        if !enSejour && lieuAuto { lieu = ""; lieuAuto = false }
+        guard !Self.basculeVue else { return }
+        Self.basculeVue = true
+        if enSejour && lieu.isEmpty { lieu = Frejus.cle; lieuAuto = true }
+    }
+
+    private var bandeauFrejus: some View {
+        Porte(teinte: Color(hex: 0x2A7FA8)) {
+            Label(Frejus.sejour(evenements, moi: moi).map { "Vous êtes à Fréjus jusqu'au \(Jour.joli($0.fin, .dateTime.day().month(.wide)))" }
+                  ?? "Les placards de Fréjus", systemImage: "sun.max").font(.willys(.headline))
+            Text("Ce que tu ranges, manges ou cuisines compte pour la maison de Fréjus. Le boni reste celui de ton foyer.")
+                .font(.willys(.footnote)).foregroundStyle(.secondary)
+            HStack {
+                NavigationLink { FrejusPlacardsView(moi: moi) } label: { Text("Inventaire et départ") }
+                    .buttonStyle(.borderedProminent)
+                Button("Revenir à mon foyer") { avecAnimation { lieu = ""; lieuAuto = false } }.buttonStyle(.bordered)
+            }
+            .buttonBorderShape(.capsule)
+        }
+    }
+
+    /// Les cinq parties de la cuisine, en pastilles qu'on fait défiler (cinq segments tenaient mal sur iPhone).
+    private var barreParties: some View {
+        ScrollViewReader { lecteur in
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(Partie.allCases) { p in
+                        Button {
+                            Retour.selection(); avecAnimation { partie = p }
+                        } label: {
+                            Text(p.rawValue).font(.willys(.subheadline, poids: .bold))
+                                .padding(.horizontal, 16).frame(minHeight: 44)
+                                .background(partie == p ? Theme.accent : Theme.porte(scheme), in: Capsule())
+                                .foregroundStyle(partie == p ? Color.black.opacity(0.85) : Color.primary)
+                                .overlay(Capsule().strokeBorder(.primary.opacity(partie == p ? 0 : 0.1)))
+                        }
+                        .buttonStyle(StyleAimant())
+                        .id(p)
+                        .accessibilityAddTraits(partie == p ? .isSelected : [])
+                    }
+                }
+                .padding(.vertical, 2)
+            }
+            .onChange(of: partie) { _, p in withAnimation(Anim.douce) { lecteur.scrollTo(p, anchor: .center) } }
+        }
     }
 
     // MARK: À manger cette semaine
@@ -70,15 +142,82 @@ struct CuisineView: View {
         }
     }
 
+    /// Le frais et les armoires, rangés par catégorie : on voit ce qu'on a, et les catégories vides disent ce qui manque.
     private func liste(_ r: Rangement) -> some View {
         let articles = monStock.filter { $0.rangement == r.rawValue }
-            .sorted { ($0.joursRestants ?? 9999) < ($1.joursRestants ?? 9999) }
-        return Porte {
-            HStack { Text(r.libelle).font(Theme.titre(22)); Spacer(); Text("\(articles.count)").foregroundStyle(.secondary) }
-            if articles.isEmpty { Text("Vide pour l'instant.").foregroundStyle(.secondary) }
-            ForEach(articles) { LigneArticle(article: $0, moi: moi) }
-            Button("Ranger quelque chose") { ajout = r }.buttonStyle(.bordered)
+        let attendues = Categorie.attendues(dans: r.rawValue)
+        // un article d'une catégorie inattendue (ou inconnue) est rangé dans « Autre »
+        func categorie(_ a: Article) -> String { Categorie.toutes.contains { $0.id == a.categorie } ? a.categorie : "autre" }
+        let ordre = attendues + Categorie.toutes.map(\.id).filter { !attendues.contains($0) }
+        let groupes = ordre.map { id in
+            (id: id, items: articles.filter { categorie($0) == id }
+                .sorted { ($0.joursRestants ?? 9999, $0.nom) < ($1.joursRestants ?? 9999, $1.nom) })
         }
+        let remplis = groupes.filter { !$0.items.isEmpty }
+        let vides = groupes.filter { $0.items.isEmpty && attendues.contains($0.id) }
+        return VStack(spacing: 12) {
+            Porte {
+                HStack {
+                    Text(r.libelle).font(Theme.titre(22)); Spacer()
+                    Text("\(articles.count) article\(articles.count > 1 ? "s" : "")").foregroundStyle(.secondary)
+                }
+                if articles.isEmpty { Text("Vide pour l'instant.").foregroundStyle(.secondary) }
+                Button("Ranger quelque chose") { ajout = r }.buttonStyle(.bordered).frame(minHeight: 44)
+            }
+            let propositions = articles.filter { propositionPour($0, r) != nil }.count
+            if propositions > 0 {
+                Porte(teinte: Theme.accent) {
+                    Text("\(propositions) article\(propositions > 1 ? "s" : "") à reclasser").font(.willys(.headline))
+                    Text("D'après leur nom, ils iraient mieux dans une autre catégorie. Tu vérifies, puis tu appliques d'un coup.")
+                        .font(.willys(.footnote)).foregroundStyle(.secondary)
+                    Button("Voir les propositions") { aReclasser = r }.buttonStyle(.borderedProminent).frame(minHeight: 44)
+                }
+            }
+            ForEach(remplis, id: \.id) { g in
+                let urgents = g.items.filter { ($0.joursRestants ?? 99) <= (r == .armoire ? 14 : 1) }.count
+                Porte {
+                    DisclosureGroup(isExpanded: Binding(
+                        get: { !fermees.contains(r.rawValue + g.id) },
+                        set: { ouvert in
+                            Retour.selection()
+                            avecAnimation { if ouvert { fermees.remove(r.rawValue + g.id) } else { fermees.insert(r.rawValue + g.id) } }
+                        })) {
+                        ForEach(g.items) { LigneArticle(article: $0, moi: moi) }
+                    } label: {
+                        HStack(spacing: 10) {
+                            Circle().fill(Categorie.couleur(g.id)).frame(width: 12, height: 12)
+                            Text(Categorie.nom(g.id)).font(Theme.titre(18))
+                            Spacer()
+                            if urgents > 0 {
+                                Text("\(urgents) à finir").font(.willys(.caption, poids: .bold)).foregroundStyle(Theme.alerte)
+                            }
+                            Text("\(g.items.count)").font(.willys(.subheadline, poids: .bold)).monospacedDigit().foregroundStyle(.secondary)
+                        }
+                        .frame(minHeight: 44)
+                    }
+                }
+            }
+            if !vides.isEmpty && !articles.isEmpty && recherche.isEmpty {
+                Porte(teinte: Theme.alerte) {
+                    Text("Il n'y en a pas").font(.willys(.headline))
+                    Text("Aucun article dans ces catégories : c'est peut-être ce qui manque.")
+                        .font(.willys(.footnote)).foregroundStyle(.secondary)
+                    FlowLayout(spacing: 8) {
+                        ForEach(vides, id: \.id) { g in
+                            Label(Categorie.nom(g.id), systemImage: "exclamationmark.circle")
+                                .font(.willys(.subheadline, poids: .semibold))
+                                .padding(.horizontal, 12).padding(.vertical, 8)
+                                .background(Theme.porte(scheme), in: Capsule())
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /// La catégorie proposée pour un article rangé dans « Autre » ou dans une catégorie qui n'existe pas à cet endroit.
+    private func propositionPour(_ a: Article, _ r: Rangement) -> String? {
+        ReclasserView.proposition(a, r)
     }
 
     /// Le surgélateur dessiné, tiroir par tiroir.
@@ -157,6 +296,7 @@ struct LigneArticle: View {
     let article: Article
     let moi: String
     @Environment(\.modelContext) private var ctx
+    @Environment(\.horizontalSizeClass) private var largeur
 
     var body: some View {
         HStack(spacing: 10) {
@@ -167,7 +307,7 @@ struct LigneArticle: View {
             }
             Spacer()
             // l'aimant de qui l'a rangé : plein s'il vient d'arriver, estompé sinon
-            Aimant(membre: article.par, taille: 22).opacity(nouveau ? 1 : 0.55)
+            if largeur != .compact || nouveau { Aimant(membre: article.par, taille: 22).opacity(nouveau ? 1 : 0.55) }
             Button("Mangé", systemImage: "checkmark") {
                 Retour.succes()
                 avecAnimation { Cuisine.manger(article, par: moi, dans: ctx) }
@@ -175,6 +315,8 @@ struct LigneArticle: View {
             }
             .buttonStyle(.borderedProminent).buttonBorderShape(.capsule).tint(Theme.ok)
             .font(.willys(.footnote, poids: .bold))
+            .labelStyle(.titleAndIcon)
+            .frame(minHeight: 44)
             .accessibilityHint("Retire \(article.nom) du stock et ajoute son prix au boni")
             Menu {
                 Button("Jeté", role: .destructive) { jeter() }
@@ -296,6 +438,58 @@ struct FlowLayout: Layout {
             if x + t.width > b.maxX, x > b.minX { x = b.minX; y += ligne + spacing; ligne = 0 }
             s.place(at: CGPoint(x: x, y: y), proposal: ProposedViewSize(t))
             x += t.width + spacing; ligne = max(ligne, t.height)
+        }
+    }
+}
+
+
+/// Reclasser d'un coup les articles mal rangés : une proposition par article, qu'on peut corriger avant d'appliquer.
+struct ReclasserView: View {
+    let articles: [Article]
+    let rangement: Rangement
+    @Environment(\.modelContext) private var ctx
+    @Environment(\.dismiss) private var fermer
+    @State private var choix: [String: String] = [:]     // cle de l'article → catégorie choisie
+
+    static func proposition(_ a: Article, _ r: Rangement) -> String? {
+        let attendues = Categorie.attendues(dans: r.rawValue)
+        let mal = a.categorie == "autre" || !attendues.contains(a.categorie)
+        guard mal, let g = Categorie.deviner(nom: a.nom, dans: r.rawValue), g != a.categorie else { return nil }
+        return g
+    }
+
+    private var concernes: [Article] { articles.filter { Self.proposition($0, rangement) != nil } }
+
+    var body: some View {
+        Form {
+            Section {
+                ForEach(concernes) { a in
+                    Picker(selection: Binding(
+                        get: { choix[a.cle] ?? Self.proposition(a, rangement) ?? a.categorie },
+                        set: { choix[a.cle] = $0 })) {
+                        ForEach(Categorie.attendues(dans: rangement.rawValue), id: \.self) { Text(Categorie.nom($0)).tag($0) }
+                    } label: {
+                        VStack(alignment: .leading) {
+                            Text(a.nom).bold()
+                            Text("Actuellement : \(Categorie.nom(a.categorie))").font(.willys(.caption)).foregroundStyle(.secondary)
+                        }
+                    }
+                }
+            } footer: { Text("Les propositions viennent du nom de l'article. Change celle qui ne va pas.") }
+        }
+        .navigationTitle("Reclasser")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .cancellationAction) { Button("Fermer") { fermer() } }
+            ToolbarItem(placement: .confirmationAction) {
+                Button("Appliquer") {
+                    for a in concernes {
+                        let c = choix[a.cle] ?? Self.proposition(a, rangement) ?? a.categorie
+                        a.categorie = c
+                    }
+                    ctx.enregistrer(); Retour.succes(); Base.rafraichirWidgets(); fermer()
+                }
+            }
         }
     }
 }
