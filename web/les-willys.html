@@ -11766,8 +11766,9 @@ function renderProjet5(){
   const l=p5L(), th=S.p5Th||"", vue=l.filter(x=>!th||x.theme===th), jal=p5Jalons();
   const carte=x=>{ const t=P5T[x.theme]||P5T.passions, c=p5Coeurs(x), moi=!!(x.coeurs&&x.coeurs[S.me]);
     return `<div class="p5-c p5-${esc(x.statut||"envie")}" style="--c:${t[3]}"><div class="p5-ch"><span class="p5-t">${t[2]} ${esc(t[1])}</span><span class="p5-st">${esc((P5_STATUTS.find(s=>s[0]===x.statut)||P5_STATUTS[0])[1])}</span></div>
-      <b>${esc(x.titre||"")}</b>${x.note?`<span class="hint">${esc(x.note)}</span>`:""}
+      <button type="button" class="p5-ed" data-p5e="${esc(x.id)}" aria-label="Modifier « ${esc(x.titre||"")} »"><b>${esc(x.titre||"")}</b>${x.note?`<span class="hint">${esc(x.note)}</span>`:""}</button>
       <div class="row tight" style="gap:6px;align-items:center;flex-wrap:wrap">
+        <button class="react" data-p5e="${esc(x.id)}">✏️ Modifier</button>
         <button class="react ${moi?"on":""}" data-p5c="${esc(x.id)}" aria-label="J'en ai envie">❤️ ${c.length||""}</button>
         <select data-p5a="${esc(x.id)}" aria-label="Quelle année ?" style="width:auto;padding:4px 8px;font-size:13px"><option value="">Un jour</option>${P5_ANS.map(a=>`<option ${+x.annee===a?"selected":""}>${a}</option>`).join("")}</select>
         <button class="react" data-p5s="${esc(x.id)}">${x.statut==="fait"?"↺ Pas encore":x.statut==="prevu"?"✓ C'est fait":"📅 On le prévoit"}</button>
@@ -11794,6 +11795,19 @@ function renderProjet5(){
 function p5Texte(){ const l=p5L().filter(x=>x.statut!=="fait"); const lignes=["🌄 Notre projet à 5 ans"];
   P5_ANS.forEach(a=>{ const it=l.filter(x=>+x.annee===a); if(it.length) lignes.push(a+" : "+it.map(x=>x.titre).join(" · ")); });
   lignes.push("Mets un ❤️ à tes envies dans Les Willys !"); return lignes.join("\n"); }
+/* Modifier une envie : le titre, le mot d'explication, le thème, l'année et où on en est. */
+function p5Modifier(id){ const x=p5L().find(y=>y.id===id); if(!x) return;
+  const bg=sheet(`<h2>Modifier l'envie</h2>
+    <label>L'envie<input id="p5m-t" value="${esc(x.titre||"")}"></label>
+    <label>En quelques mots<textarea id="p5m-n" placeholder="Pourquoi, comment, avec qui…">${esc(x.note||"")}</textarea></label>
+    <div class="row"><label>Thème<select id="p5m-th">${P5_THEMES.map(t=>`<option value="${t[0]}" ${x.theme===t[0]?"selected":""}>${t[2]} ${esc(t[1])}</option>`).join("")}</select></label>
+      <label>Année<select id="p5m-an"><option value="">Un jour</option>${P5_ANS.map(a=>`<option ${+x.annee===a?"selected":""}>${a}</option>`).join("")}</select></label>
+      <label>Où on en est<select id="p5m-st">${P5_STATUTS.map(([k,n])=>`<option value="${k}" ${(x.statut||"envie")===k?"selected":""}>${esc(n)}</option>`).join("")}</select></label></div>
+    <div class="row tight" style="gap:8px"><button class="btn accent" id="p5m-ok">Enregistrer</button><button class="btn ghost" id="p5m-no">Annuler</button></div>`);
+  const q=s=>bg.querySelector(s); q("#p5m-no").onclick=closeSheet; setTimeout(()=>q("#p5m-t").focus(),50);
+  q("#p5m-ok").onclick=async()=>{ const titre=q("#p5m-t").value.trim(); if(!titre){ toast("L'envie ne peut pas être vide"); return; } if(!S.db){ toast("Connecte-toi à claude.ai pour enregistrer."); return; }
+    const an=q("#p5m-an").value;
+    try{ await S.db.collection("projet5").doc(id).update({titre,note:q("#p5m-n").value.trim(),theme:q("#p5m-th").value,annee:an?+an:"",statut:q("#p5m-st").value,modifiePar:S.me,modifieLe:Date.now()}); closeSheet(); toast("Envie modifiée"); }catch{ toast("Pas enregistré."); } }; }
 plusRoute("projet5",renderProjet5,"Notre projet à 5 ans","regarde le projet à 5 ans");
 (()=>{ const st=document.createElement("style"); st.textContent=`
 .p5-g{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
@@ -11804,7 +11818,8 @@ plusRoute("projet5",renderProjet5,"Notre projet à 5 ans","regarde le projet à 
 .p5-c{background:var(--door);border:1px solid var(--line);border-left:5px solid var(--c);border-radius:14px;padding:10px 12px;display:grid;gap:6px;min-width:0;box-shadow:var(--tile-shadow)}
 .p5-c b{font-size:15.5px;line-height:1.3}.p5-c.p5-fait{opacity:.6}.p5-c.p5-fait b{text-decoration:line-through}
 .p5-ch{display:flex;justify-content:space-between;gap:6px;font-size:11.5px;font-weight:800;text-transform:uppercase;letter-spacing:.06em}.p5-t{color:var(--c)}
-.p5-st{color:var(--muted)}.p5-prevu .p5-st{color:var(--ok)}`; document.head.appendChild(st); })();
+.p5-st{color:var(--muted)}.p5-prevu .p5-st{color:var(--ok)}
+.p5-ed{border:0;background:none;padding:0;text-align:left;display:grid;gap:4px;color:inherit;font:inherit;cursor:pointer}.p5-ed:hover b{text-decoration:underline}`; document.head.appendChild(st); })();
 BIND_PLUS.push(root=>{
   const maj=async(id,patch)=>{ if(!S.db) return; try{ await S.db.collection("projet5").doc(id).update(patch); }catch{ toast("Pas enregistré."); } };
   root.querySelectorAll("[data-p5th]").forEach(b=>b.onclick=()=>{ S.p5Th=b.dataset.p5th; render(); });
@@ -11816,6 +11831,7 @@ BIND_PLUS.push(root=>{
   root.querySelectorAll("[data-p5a]").forEach(s=>s.onchange=()=>maj(s.dataset.p5a,{annee:s.value?+s.value:""}));
   root.querySelectorAll("[data-p5s]").forEach(b=>b.onclick=()=>{ const x=p5L().find(y=>y.id===b.dataset.p5s); if(!x) return; const nv=x.statut==="fait"?"envie":x.statut==="prevu"?"fait":"prevu"; maj(x.id,{statut:nv,...(nv==="prevu"&&!x.annee?{annee:new Date().getFullYear()+1}:{})}); });
   root.querySelectorAll("[data-p5x]").forEach(b=>b.onclick=()=>{ if(confirm("Retirer cette idée ?")) remove("projet5",b.dataset.p5x); });
+  root.querySelectorAll("[data-p5e]").forEach(b=>b.onclick=()=>p5Modifier(b.dataset.p5e));
 });
 /* ---------- Rendu ---------- */
 
