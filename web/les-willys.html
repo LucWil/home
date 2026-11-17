@@ -11097,7 +11097,7 @@ TUILES_PLUS.push(()=>{ const ym=mwDefaut(), d=mwDonnees(ym); const n=d.photos.le
   return {r:"mois",t:"Le mois des Willys",c:"#c8456b",ico:MW_ICO,b:+todayIso().slice(8)<=3?"✨":"",p:esc(mwNom(ym)+(n?" · "+n+" souvenir"+(n>1?"s":""):""))}; });
 function renderMois(){
   const ym=S.mwYm||mwDefaut(), d=mwDonnees(ym), enCours=ym===todayIso().slice(0,7), apres=mwDecale(ym,1)<=todayIso().slice(0,7);
-  const nav=`<div class="row" style="flex:none;gap:6px"><button class="react" data-mwgo="-1" aria-label="Mois précédent">‹</button>${apres?`<button class="react" data-mwgo="1" aria-label="Mois suivant">›</button>`:""}</div>`;
+  const nav=`<div class="row" style="flex:none;gap:6px"><button class="react" style="flex:none;min-width:0" data-mwgo="-1" aria-label="Mois précédent">‹</button>${apres?`<button class="react" style="flex:none;min-width:0" data-mwgo="1" aria-label="Mois suivant">›</button>`:""}</div>`;
   const photo=x=>`<figure class="polar" style="margin:0"><img src="${esc(x.url)}" alt="${esc(x.legend||"")}" loading="lazy" data-grand="${esc(x.id)}"><figcaption class="cap">${esc(x.legend||"")}</figcaption><div class="bas"><span class="stack">${(x.who||[]).slice(0,4).map(k=>mag(k,"sm")).join("")}</span></div></figure>`;
   const sortie=s=>{ const av=Object.entries(s.avis||{}).filter(([,a])=>a&&a.stars), moy=av.length?av.reduce((t,[,a])=>t+ +a.stars,0)/av.length:0, mot=av.map(([k,a])=>a.mot?`« ${a.mot} » (${M[k]?M[k].n:k})`:"").filter(Boolean).join(" ");
     return `<div class="item"><div style="min-width:0"><b>${s.type==="hotel"?"🏨":"🍽"} ${esc(s.nom||"")}</b> <span class="hint">${esc(fmtD(s.date,{day:"numeric",month:"short"}))}${s.lieu?" · "+esc(s.lieu):""}</span>${mot?`<div class="hint">${esc(mot)}</div>`:""}</div><span>${moy?"★".repeat(Math.round(moy)):""}</span></div>`; };
@@ -11220,12 +11220,12 @@ function renderSemaine(){
       ${ts.map(([x,i])=>tache(x,i)).join("")}</div>`; };
   const libres=tk.map((x,i)=>[x,i]).filter(([x])=>!x.j);
   const foyerM=(HM[myHome()]&&HM[myHome()].members)||[S.me];
-  return `${pageTete("Le plan de la semaine · "+esc(HM[myHome()]?HM[myHome()].n:""),"La semaine",`<div class="row" style="flex:none;gap:6px"><button class="react" style="flex:none" data-smgo="-1" aria-label="Semaine précédente">‹</button>${off?`<button class="react" style="flex:none" data-smgo="0">Cette semaine</button>`:""}<button class="react" style="flex:none" data-smgo="1" aria-label="Semaine suivante">›</button></div>`)}
+  return `${pageTete("Le plan de la semaine · "+esc(HM[myHome()]?HM[myHome()].n:""),"La semaine",`<div class="row" style="flex:none;gap:6px"><button class="react" style="flex:none;min-width:0" data-smgo="-1" aria-label="Semaine précédente">‹</button>${off?`<button class="react" style="flex:none;min-width:0" data-smgo="0">Cette semaine</button>`:""}<button class="react" style="flex:none;min-width:0" data-smgo="1" aria-label="Semaine suivante">›</button></div>`)}
   <p class="hint" style="margin:6px 0 0;text-transform:none">${esc(titre)}${off===0?" · cette semaine":""}</p>
-  <div class="door sm-pr" style="margin-top:12px"><h3>⭐ Les 3 priorités de la semaine</h3>
+  <div class="door sm-pr" data-rp="fixe" style="margin-top:12px"><h3>⭐ Les 3 priorités de la semaine</h3>
     ${pr.map((p,i)=>`<label class="sm-prl"><span>${i+1}</span><input data-smp="${i}" value="${esc(p)}" placeholder="${["Ex. mettre les joints aux fenêtres","Ex. réserver le resto pour l'anniversaire","Ex. préparer le brunch de la Saint-Nicolas"][i]}"></label>`).join("")}</div>
   <div class="sm-grille" style="margin-top:12px">${J.map(jour).join("")}</div>
-  <div class="door" style="margin-top:12px"><h3>✅ À faire</h3>
+  <div class="door" data-rp="fixe" style="margin-top:12px"><h3>✅ À faire</h3>
     <div class="row" style="gap:6px;margin-top:8px"><input id="sm-nt" placeholder="Ex. appeler le ramoneur" style="flex:3">
       <select id="sm-nj" style="flex:1;min-width:110px"><option value="">Sans jour</option>${J.map(j=>`<option value="${j.k}">${esc(j.n)}</option>`).join("")}</select>
       <select id="sm-nq" style="flex:1;min-width:110px"><option value="">Qui ?</option>${foyerM.map(k=>`<option value="${k}">${esc(M[k]?M[k].n:k)}</option>`).join("")}</select>
@@ -11281,7 +11281,7 @@ function renderRoutines(){
   const ts=rtDoc().taches||[], foyerM=(HM[myHome()]&&HM[myHome()].members)||[S.me];
   const ligne=x=>{ const f=rtFait(x); return `<label class="sm-t ${f?"sm-fait":""}"><input type="checkbox" data-rt="${esc(x.id)}" ${f?"checked":""}><span>${esc(x.t)} <span class="tag">${esc(x.piece||"")}</span></span>${f&&M[f.by]?mag(f.by,"sm"):(x.qui&&M[x.qui]?`<span style="opacity:.55">${mag(x.qui,"sm")}</span>`:"")}<button type="button" class="sm-x" data-rtdel="${esc(x.id)}" aria-label="Retirer">✕</button></label>`; };
   const bloc=([f,n])=>{ const l=ts.filter(x=>x.freq===f); if(!l.length) return ""; const fa=l.filter(rtFait).length, pc=Math.round(fa/l.length*100);
-    return `<div class="door" style="margin-top:12px"><div class="section-head"><h3>${esc(n)}</h3><span class="cnt">${fa} / ${l.length}</span></div>
+    return `<div class="door" data-rp="fixe" style="margin-top:12px"><div class="section-head"><h3>${esc(n)}</h3><span class="cnt">${fa} / ${l.length}</span></div>
       <div style="height:8px;border-radius:5px;background:var(--line);overflow:hidden;margin:8px 0"><i style="display:block;height:100%;width:${pc}%;background:var(--ok)"></i></div>
       ${RT_PIECES.filter(p=>l.some(x=>x.piece===p)).concat(l.some(x=>!RT_PIECES.includes(x.piece))?["Autre"]:[]).map(p=>l.filter(x=>p==="Autre"?!RT_PIECES.includes(x.piece):x.piece===p).map(ligne).join("")).join("")}</div>`; };
   return `${pageTete("Le ménage partagé · "+esc(HM[myHome()]?HM[myHome()].n:""),"Routines de la maison","")}
@@ -11373,6 +11373,94 @@ if(!window.__cdTimer) window.__cdTimer=setInterval(()=>{ try{ if(!cdOn()) return
   const ph=cdPhotos(); if(ph.length>1&&Date.now()-(window.__cdPh||0)>20000){ window.__cdPh=Date.now(); S.cdI=((S.cdI||0)+1)%ph.length; const im=document.getElementById("cd-img"), cp=document.getElementById("cd-cap"); const p=ph[S.cdI]; if(im){ im.src=p.url; im.alt=p.legend||""; } if(cp) cp.textContent=p.legend||""; }
   if(Date.now()-(window.__cdRe||0)>5*60e3){ window.__cdRe=Date.now(); if(!document.querySelector(".sheet-bg")) render(); } }catch{} },10000);
 document.addEventListener("visibilitychange",()=>{ try{ if(document.visibilityState==="visible"&&cdOn()&&!window.__cdLock&&navigator.wakeLock) navigator.wakeLock.request("screen").then(l=>{ window.__cdLock=l; l.addEventListener("release",()=>{ window.__cdLock=null; }); }).catch(()=>{}); }catch{} });
+/* ---------- Le budget du mois du foyer (préfixe bd) ---------- */ /* Privé : ne s'affiche qu'une fois l'espace du foyer ouvert avec son code (comme le frigo et les tickets).
+   Collection budgets, un document par foyer : {categories:[{k, n, ico, budget}], revenus:[{n, montant}], epargne (objectif mensuel), by, at} — on l'écrit une fois, il vaut pour tous les mois.
+   Collection depensesfoyer : {home, date, montant, cat, note, by, at}. S'ajoutent tout seuls : les tickets de courses du foyer (alimentation) et les restos, sorties et hôtels notés avec un prix (loisirs, vacances). */
+plusColl("budgets"); plusColl("depensesfoyer",(a,b)=>(b.date||"").localeCompare(a.date||""));
+const BD_ICO='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h18v12H3z"/><path d="M3 11h18"/><path d="M16 15h2"/><path d="M7 7V5h10v2"/></svg>';
+const BD_CATS0=[["logement","Logement et crédit","🏠",0],["alimentation","Courses et alimentation","🛒",0],["energie","Énergie et eau","⚡",0],["transport","Voiture et transport","🚗",0],
+  ["sante","Santé","🩺",0],["petites","Les petites","🧸",0],["loisirs","Restos et sorties","🍽",0],["vacances","Vacances et Fréjus","🌴",0],["cadeaux","Cadeaux","🎁",0],
+  ["abos","Abonnements, GSM, internet","📱",0],["maison","Maison et travaux","🛠",0],["divers","Divers","🧾",0]];
+const bdDoc = () => (S.budgets||[]).find(x=>x.id===myHome())||{categories:BD_CATS0.map(([k,n,ico,budget])=>({k,n,ico,budget})),revenus:[{n:"Salaires",montant:0}],epargne:0};
+const bdCats = () => { const c=bdDoc().categories; return Array.isArray(c)&&c.length?c:BD_CATS0.map(([k,n,ico,budget])=>({k,n,ico,budget})); };
+const bdMoisDe = d => String(d||"").slice(0,7);
+function bdLignes(ym){ const h=myHome(), l=[];
+  (S.depensesfoyer||[]).filter(x=>x.home===h&&bdMoisDe(x.date)===ym).forEach(x=>l.push({id:x.id,date:x.date,montant:+x.montant||0,cat:x.cat||"divers",note:x.note||"",by:x.by,src:"main"}));
+  (S.tickets||[]).filter(t=>t.home===h&&bdMoisDe(t.date)===ym&&+t.total>0).forEach(t=>l.push({date:t.date,montant:+t.total,cat:"alimentation",note:t.shop||"Courses",by:t.by,src:"ticket"}));
+  (S.sorties||[]).filter(s=>s.home===h&&bdMoisDe(s.date)===ym&&+s.montant>0).forEach(s=>l.push({date:s.date,montant:+s.montant,cat:s.type==="hotel"?"vacances":"loisirs",note:s.nom||"",by:s.by,src:"sortie"}));
+  return l.sort((a,b)=>(b.date||"").localeCompare(a.date||"")); }
+const bdSomme = l => Math.round(l.reduce((s,x)=>s+(+x.montant||0),0)*100)/100;
+const bdRevenus = () => bdSomme((bdDoc().revenus||[]).map(r=>({montant:r.montant})));
+const bdE = n => eur(n).replace(",00 €"," €");
+TUILES_PLUS.push(()=>{ const h=myHome(); if(!HM[h]||h==="frejus") return null;
+  if(!isUnlocked(h)) return {r:"budget-mois",t:"Budget du mois",c:"#2f8a5b",ico:BD_ICO,b:"🔒",p:"Privé au foyer : il s'ouvre avec votre code"};
+  const ym=todayIso().slice(0,7), dep=bdSomme(bdLignes(ym)), bud=bdCats().reduce((s,c)=>s+(+c.budget||0),0);
+  return {r:"budget-mois",t:"Budget du mois",c:"#2f8a5b",ico:BD_ICO,b:"",p:esc(bud?`${bdE(dep)} sur ${bdE(bud)} · reste ${bdE(bud-dep)}`:`${bdE(dep)} dépensés ce mois`)}; });
+function renderBudgetMois(){
+  const h=myHome();
+  if(h==="frejus"||!HM[h]) return `${pageTete("Budget","Budget du mois","")}<div class="empty" style="margin-top:12px">Le budget se tient par foyer : choisis ton prénom dans un foyer.</div>`;
+  if(!isUnlocked(h)) return `${pageTete("Espace privé · "+esc(HM[h].n),"Budget du mois","")}<div class="door lock" style="margin-top:12px;padding:24px"><div style="font-size:40px">🔒</div><p class="muted" style="margin:0;max-width:36ch">Le budget n'est visible que par votre foyer. Ouvre d'abord votre espace avec le code, puis reviens ici.</p><a class="btn accent" href="#chez-nous" style="text-decoration:none">Ouvrir l'espace du foyer</a></div>`;
+  const ym=S.bdYm||todayIso().slice(0,7), cats=bdCats(), L=bdLignes(ym), dep=bdSomme(L), rev=bdRevenus(), bud=cats.reduce((s,c)=>s+(+c.budget||0),0), ep=Math.round((rev-dep)*100)/100, obj=+bdDoc().epargne||0;
+  const parCat=Object.fromEntries(cats.map(c=>[c.k,bdSomme(L.filter(x=>x.cat===c.k))])); const horsCat=L.filter(x=>!cats.some(c=>c.k===x.cat));
+  const enCours=ym===todayIso().slice(0,7), jour=+todayIso().slice(8), nbJ=new Date(+ym.slice(0,4),+ym.slice(5,7),0).getDate(), rythme=enCours?jour/nbJ:1;
+  const barre=c=>{ const r=parCat[c.k]||0, b=+c.budget||0, pc=b?Math.min(100,Math.round(r/b*100)):0, etat=!b?"":r>b?"bd-trop":r>b*rythme*1.1?"bd-vite":"bd-ok";
+    return `<div class="bd-c"><div class="bd-ch"><span>${esc(c.ico||"")} <b>${esc(c.n)}</b></span><span class="bd-m ${etat}">${esc(bdE(r))}${b?` <small>/ ${esc(bdE(b))}</small>`:""}</span></div>${b?`<div class="bd-bar"><i class="${etat}" style="width:${pc}%"></i>${enCours?`<em style="left:${Math.round(rythme*100)}%"></em>`:""}</div>`:""}</div>`; };
+  const ligne=x=>{ const c=cats.find(c=>c.k===x.cat); return `<div class="item"><div style="min-width:0"><b>${esc(x.note||(c?c.n:x.cat))}</b> <span class="hint">${esc(fmtD(x.date,{day:"numeric",month:"short"}))} · ${esc(c?c.ico+" "+c.n:x.cat)}${x.src==="ticket"?" · ticket de courses":x.src==="sortie"?" · noté dans Loisirs":""}</span></div><span style="display:flex;gap:6px;align-items:center"><b style="font-variant-numeric:tabular-nums">${esc(eur(x.montant))}</b>${x.src==="main"?`<button class="react" data-bddel="${esc(x.id)}" aria-label="Retirer">✕</button>`:""}</span></div>`; };
+  const hist=[-5,-4,-3,-2,-1,0].map(n=>{ const d=new Date(ym+"-01T12:00:00"); d.setMonth(d.getMonth()+n); const m=iso(d).slice(0,7); return {m,v:bdSomme(bdLignes(m))}; }), mx=Math.max(1,...hist.map(x=>x.v));
+  const nav=`<div class="row" style="flex:none;gap:6px"><button class="react" style="flex:none;min-width:0" data-bdgo="-1" aria-label="Mois précédent">‹</button>${enCours?"":`<button class="react" style="flex:none;min-width:0" data-bdgo="0">Ce mois</button><button class="react" style="flex:none;min-width:0" data-bdgo="1" aria-label="Mois suivant">›</button>`}</div>`;
+  const d=bdDoc();
+  return `${pageTete("Espace privé · "+esc(HM[h].n),"Budget du mois",nav)}
+  <p class="hint" style="margin:6px 0 0">${esc((m=>m.charAt(0).toUpperCase()+m.slice(1))(fmtD(ym+"-01",{month:"long",year:"numeric"})))}${enCours?" · jour "+jour+" sur "+nbJ:""}</p>
+  <div class="stats" style="margin-top:12px">
+    <div class="stat"><b>${esc(bdE(rev))}</b><span>revenus</span></div>
+    <div class="stat"><b>${esc(bdE(dep))}</b><span>dépensés${bud?" sur "+esc(bdE(bud))+" prévus":""}</span></div>
+    <div class="stat"><b style="color:${ep>=0?"var(--ok)":"var(--warn)"}">${esc(bdE(ep))}</b><span>${ep>=0?"restent (revenus − dépenses notées)":"de plus que les revenus"}${obj?" · objectif "+esc(bdE(obj)):""}</span></div></div>
+  <div class="door" data-rp="fixe" style="margin-top:12px"><h3>Ajouter une dépense</h3>
+    <div class="row" style="gap:6px;margin-top:8px"><input id="bd-m" inputmode="decimal" placeholder="Montant (€)" style="flex:1;min-width:100px"><select id="bd-c" style="flex:2;min-width:150px">${cats.map(c=>`<option value="${esc(c.k)}">${esc(c.ico+" "+c.n)}</option>`).join("")}</select>
+      <input id="bd-n" placeholder="Pour quoi ? (ex. plein d'essence)" style="flex:2;min-width:150px"><input id="bd-d" type="date" value="${esc(enCours?todayIso():ym+"-01")}" style="flex:1;min-width:130px"><button class="btn accent" style="flex:none" id="bd-add">Ajouter</button></div>
+    <p class="hint" style="margin:6px 0 0">Les tickets de courses du foyer et les restos, sorties et hôtels notés avec un prix s'ajoutent tout seuls.</p></div>
+  <div class="door" data-rp="fixe" style="margin-top:12px"><div class="section-head"><h3>Budget et réel, par catégorie</h3>${enCours?`<span class="hint">le trait = où on devrait en être aujourd'hui</span>`:""}</div>
+    <div style="display:grid;gap:10px;margin-top:10px">${cats.map(barre).join("")}${horsCat.length?`<div class="bd-c"><div class="bd-ch"><span>🧾 <b>Autres</b></span><span class="bd-m">${esc(bdE(bdSomme(horsCat)))}</span></div></div>`:""}</div></div>
+  <div class="door" style="margin-top:12px"><h3>Les 6 derniers mois</h3><div class="wbars">${hist.map(x=>`<div><i style="height:${Math.max(3,Math.round(x.v/mx*100))}%" title="${esc(bdE(x.v))}"></i><span>${esc(fmtD(x.m+"-01",{month:"short"}))}</span></div>`).join("")}</div>
+    <p class="hint" style="margin:0">${hist.filter(x=>x.v).length>1?`Moyenne : ${esc(bdE(bdSomme(hist.filter(x=>x.v).map(x=>({montant:x.v})))/hist.filter(x=>x.v).length))} par mois.`:"La courbe se remplit au fil des mois."}</p></div>
+  <div class="door" style="margin-top:12px"><div class="section-head"><h3>Les dépenses du mois</h3><span class="cnt">${L.length}</span></div><div class="items" style="margin-top:6px">${L.map(ligne).join("")||`<p class="hint" style="margin:0">Rien de noté ce mois-ci.</p>`}</div></div>
+  <div class="door" style="margin-top:12px"><details ${(S.budgets||[]).some(x=>x.id===h)?"":"open"}><summary style="cursor:pointer;font-weight:700">⚙️ Nos revenus et nos budgets (on les écrit une fois)</summary>
+    <p class="hint">Ils valent pour tous les mois ; on les change quand la vie change.</p>
+    <h4 style="margin:10px 0 4px">Revenus du mois</h4>${(d.revenus||[]).map((r,i)=>`<div class="row" style="gap:6px;margin-bottom:6px"><input data-bdrn="${i}" value="${esc(r.n||"")}" style="flex:2"><input data-bdrm="${i}" inputmode="decimal" value="${+r.montant||""}" placeholder="€" style="flex:1;min-width:90px"></div>`).join("")}
+    <button class="react" id="bd-rev+" style="margin-bottom:8px">+ un revenu</button>
+    <h4 style="margin:10px 0 4px">Budget par catégorie (€ par mois)</h4><div style="display:grid;gap:6px">${cats.map((c,i)=>`<label class="bd-set"><span>${esc(c.ico+" "+c.n)}</span><input data-bdb="${i}" inputmode="decimal" value="${+c.budget||""}" placeholder="0"></label>`).join("")}</div>
+    <label class="bd-set" style="margin-top:8px"><span>💚 Objectif d'épargne par mois</span><input id="bd-ep" inputmode="decimal" value="${+d.epargne||""}" placeholder="0"></label>
+    <div class="row" style="margin-top:10px"><button class="btn accent" style="flex:none" id="bd-save">Enregistrer</button></div></details></div>
+  <div class="row" style="margin-top:12px;gap:6px"><button class="react" style="flex:none" id="bd-a4">🖨 Fiche A4 du mois</button></div>
+  <p class="hint" style="margin-top:10px">Privé au foyer ${esc(HM[h].n)} : les autres foyers ne voient pas cette page sans votre code.</p>`; }
+function faBudget(ym){ const cats=bdCats(), L=bdLignes(ym), rev=bdRevenus(), dep=bdSomme(L);
+  const corps=`<table><tr><th>Revenus</th><th>Dépensés</th><th>Mis de côté</th></tr><tr><td><b>${faE(bdE(rev))}</b></td><td><b>${faE(bdE(dep))}</b></td><td><b>${faE(bdE(rev-dep))}</b></td></tr></table>
+  <h2>Par catégorie</h2><table><tr><th style="width:46%">Catégorie</th><th>Budget</th><th>Réel</th><th>Écart</th></tr>${cats.map(c=>{ const r=bdSomme(L.filter(x=>x.cat===c.k)), b=+c.budget||0; return `<tr><td>${faE(c.ico+" "+c.n)}</td><td>${b?faE(bdE(b)):""}</td><td>${faE(bdE(r))}</td><td>${b?faE(bdE(b-r)):""}</td></tr>`; }).join("")}</table>
+  <h2>Le détail</h2><table><tr><th style="width:18%">Date</th><th>Quoi</th><th style="width:22%">Catégorie</th><th style="width:16%">Montant</th></tr>${L.map(x=>{ const c=cats.find(c=>c.k===x.cat); return `<tr><td>${faE(fmtD(x.date,{day:"numeric",month:"short"}))}</td><td>${faE(x.note)}</td><td>${faE(c?c.n:x.cat)}</td><td>${faE(eur(x.montant))}</td></tr>`; }).join("")}</table>`;
+  return faDoc("Le budget du mois", `${HM[myHome()]?HM[myHome()].n:""} · ${fmtD(ym+"-01",{month:"long",year:"numeric"})}`, corps, false); }
+plusRoute("budget-mois",renderBudgetMois,"Budget du mois","regarde le budget");
+(()=>{ const st=document.createElement("style"); st.textContent=`
+.bd-c{display:grid;gap:4px}.bd-ch{display:flex;justify-content:space-between;gap:10px;align-items:baseline;flex-wrap:wrap}
+.bd-m{font-variant-numeric:tabular-nums;font-weight:700}.bd-m small{color:var(--muted);font-weight:600}.bd-m.bd-trop{color:var(--warn)}
+.bd-bar{position:relative;height:10px;border-radius:6px;background:var(--line);overflow:visible}
+.bd-bar i{display:block;height:100%;border-radius:6px;background:var(--ok)}.bd-bar i.bd-vite{background:var(--accent)}.bd-bar i.bd-trop{background:var(--warn)}
+.bd-bar em{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--ink);opacity:.45}
+.bd-set{display:grid;grid-template-columns:minmax(0,1fr) 110px;gap:8px;align-items:center;font-weight:500}`; document.head.appendChild(st); })();
+BIND_PLUS.push(root=>{
+  root.querySelectorAll("[data-bdgo]").forEach(b=>b.onclick=()=>{ const v=b.dataset.bdgo; if(v==="0") S.bdYm=null; else { const d=new Date((S.bdYm||todayIso().slice(0,7))+"-01T12:00:00"); d.setMonth(d.getMonth()+ +v); const m=iso(d).slice(0,7); S.bdYm=m>=todayIso().slice(0,7)?null:m; } render(); });
+  const num=v=>{ const n=parseFloat(String(v||"").replace(/\s/g,"").replace(",",".")); return isFinite(n)?Math.round(n*100)/100:0; };
+  const add=root.querySelector("#bd-add"); if(add) add.onclick=async()=>{ const m=num(root.querySelector("#bd-m").value); if(!m){ toast("Indique le montant"); return; }
+    const d={home:myHome(),date:root.querySelector("#bd-d").value||todayIso(),montant:m,cat:root.querySelector("#bd-c").value,note:root.querySelector("#bd-n").value.trim(),by:S.me,at:Date.now()};
+    if(await save("depensesfoyer",d)) toast(eur(m)+" noté"); };
+  root.querySelectorAll("[data-bddel]").forEach(b=>b.onclick=()=>{ if(confirm("Retirer cette dépense ?")) remove("depensesfoyer",b.dataset.bddel); });
+  const lire=()=>{ const d=bdDoc(), cats=bdCats().map((c,i)=>{ const inp=root.querySelector(`[data-bdb="${i}"]`); return {...c,budget:inp?num(inp.value):(+c.budget||0)}; });
+    const revenus=(d.revenus||[]).map((r,i)=>({n:(root.querySelector(`[data-bdrn="${i}"]`)||{}).value||r.n||"",montant:num((root.querySelector(`[data-bdrm="${i}"]`)||{}).value)}));
+    return {categories:cats,revenus,epargne:num((root.querySelector("#bd-ep")||{}).value)}; };
+  const ecrire=async(x,msg)=>{ const d={...x,by:S.me,at:Date.now()}; if(await save("budgets",d,myHome())){ const i=S.budgets.findIndex(y=>y.id===myHome()); if(i>=0) S.budgets[i]={id:myHome(),...d}; else S.budgets.push({id:myHome(),...d}); toast(msg); render(); } };
+  const sv=root.querySelector("#bd-save"); if(sv) sv.onclick=()=>ecrire(lire(),"Budget enregistré");
+  const rp=root.querySelector("#bd-rev\\+"); if(rp) rp.onclick=()=>{ const x=lire(); x.revenus.push({n:"Autre revenu",montant:0}); ecrire(x,"Ligne ajoutée"); };
+  const a4=root.querySelector("#bd-a4"); if(a4) a4.onclick=()=>{ const ym=S.bdYm||todayIso().slice(0,7); faTelecharger("budget-"+ym+".html",faBudget(ym)); };
+});
 /* ---------- Rendu ---------- */
 
 /* ---------- L'énergie de la maison (préfixe wen) ---------- */ /* Repris de l'onglet Énergie de la Cagnotte le 15/11/2026. Collection energie {type:"elec_jour"|"elec_nuit"|"eau"|"carport"|"radiateurs"|"zaptec"|"injection"|"onduleur"|"bruleur"|"thermostat", date, index, lu, note, par, cree} ou {type:"mazout", date, litres, prix, total, fournisseur} ou {type:"prix_mazout", date, prix, source} ou {type:"solaire_an", annee, kwh, injecte, revenu} ou {type:"bois", date, steres, prix, total} ; réglages dans meta/energie. Visible dans La maison → L'énergie (Luc et Loulou). */
