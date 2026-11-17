@@ -3897,6 +3897,8 @@ function renderCal(){
       const d=ds[k];
       const evs=S.events.filter(e=>e.type!=="frejus"&&di>=e.start&&di<=(e.end||e.start)).concat(...PLUS(CAL_PLUS,di).filter(Array.isArray));
       const sc=schoolOn(di), scl=[sc.be?"congés scolaires en Belgique":"",sc.lu?"congés scolaires au Luxembourg":""].filter(Boolean).join(", ");
+      /* La main ✋ dans un titre colore la journée en rose : c'est un repère personnel de Chouchou, réservé à lui.
+         Ne jamais ajouter ✋ (ni 🤚, 🖐) à un titre, ni l'utiliser pour marquer quoi que ce soit, sans son accord explicite. */
       cells+=`<button class="day ${d.getMonth()!==mo?"out":""} ${di===t?"today":""} ${evs.some(e=>/[\u270B\u{1F91A}\u{1F590}]/u.test(e.title||""))?"main":""} ${evs.some(e=>((e.title||"").match(/[\u270B\u{1F91A}\u{1F590}]/gu)||[]).length>=2)?"main2":""}" data-day="${di}" aria-label="${esc(fmtD(di,{weekday:"long",day:"numeric",month:"long"})+(scl?" — "+scl:""))}"><span class="n">${d.getDate()}</span>${PLUS(PASTILLES_PLUS,di).join("")}${evs.slice(0,3).map(e=>`<span class="bar" style="--c:${evColor(e)}">${esc(e.title)}</span>`).join("")}</button>`;
     });
   }
