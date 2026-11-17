@@ -266,6 +266,7 @@ input,select,textarea{border:1px solid var(--line);background:var(--bg);border-r
 textarea{min-height:90px;resize:vertical}
 .row{display:flex;gap:10px;flex-wrap:wrap}
 .row>*{flex:1;min-width:130px}
+.row.tight>*{flex:none;min-width:0}
 .pick{display:flex;flex-wrap:wrap;gap:8px}
 .pick button{border:2px solid transparent;background:transparent;border-radius:999px;padding:2px}
 .pick button[aria-pressed="true"]{border-color:var(--ink)}
@@ -4136,7 +4137,7 @@ function recipeCard(r){
   <div class="body"><div class="row" style="gap:6px">${r.extra?`<span class="tag ensemble" style="flex:none">petit extra</span>`:""}<span class="tag" style="flex:none">TM6</span>${r.servings?`<span class="tag" style="flex:none">${r.servings} pers.</span>`:""}</div>
   <h3>${esc(r.title)}</h3><div class="who">${(r.steps||[]).length} étapes · ajoutée par ${esc(M[r.by]?.n||r.byName||"la famille")}</div></div></article>`;
 }
-const lundiIso=()=>{ const d=new Date(); d.setDate(d.getDate()-((d.getDay()+6)%7)); return iso(d); };
+const lundiIso=jour=>{ const d=jour?new Date(jour+"T12:00:00"):new Date(); d.setDate(d.getDate()-((d.getDay()+6)%7)); return iso(d); };
 function renderVote(){
   const sem=lundiIso(), v=S.menuvote.find(x=>x.id===sem);
   const voix=S.menuvotes.filter(x=>x.semaine===sem);
@@ -6224,7 +6225,8 @@ function duplicates(){
   return Object.entries(by).filter(([,v])=>v.length>1).map(([k,v])=>({name:v[0].name,n:v.length,places:[...new Set(v.map(x=>PLACES[x.place]))]}));
 }
 /* ---------- Ce qui part à la poubelle ---------- */
-const nb = v => { const n=+String(v??"").replace(",",".").replace(/[^0-9.]/g,""); return isFinite(n)&&n>0?Math.round(n*100)/100:0; };
+/* Un montant tapé à la belge : « 1.250,50 », « 1 250,50 € », « 12,5 » ou « 12.50 ». Le point est un séparateur de milliers s'il y a une virgule ou s'il découpe des groupes de trois chiffres. */
+const nb = v => { let t=String(v??"").replace(/[^0-9.,]/g,""); t=t.includes(",")||/^\d{1,3}(\.\d{3})+$/.test(t)?t.replace(/\./g,"").replace(",","."):t; const n=+t; return isFinite(n)&&n>0?Math.round(n*100)/100:0; };
 async function estimePrix(liste){
   if(!S.sample||!liste.length) return {};
   const r=await S.sample.json(`Voici des produits alimentaires achetés en supermarché en Belgique.
@@ -7448,13 +7450,14 @@ function formSejour(h){
       if(st) setTimeout(()=>laisserAvis(h.name,h.adresse||h.city,avis[S.me].mot,st),500); }catch{ toast("Pas enregistré."); } };
 }
 /* ---------- Le budget loisirs ---------- */
-function renderBudgetLoisirs(){
-  const h=myHome(), an=S.loisAn||new Date().getFullYear();
-  const lignes=[
+/* Les restos et hôtels payés par un foyer : {k:"resto"|"hotel", nom, date, v}. Partagé par le budget Loisirs et le budget du mois. */
+function loisirsLignes(h){ return [
     ...S.sorties.filter(s=>s.home===h&&s.type==="resto"&&nb(s.montant)).map(s=>({k:"resto",nom:s.nom,date:s.date,v:nb(s.montant)})),
     ...S.hotels.filter(x=>x.home===h&&x.arrivee&&(nb(x.prixFinal)||nb(x.prix))).map(x=>({k:"hotel",nom:x.name,date:x.arrivee,v:nb(x.prixFinal)||nb(x.prix)})),
-    ...S.sorties.filter(s=>s.home===h&&s.type==="hotel"&&nb(s.montant)).map(s=>({k:"hotel",nom:s.nom,date:s.date,v:nb(s.montant)}))
-  ].filter(l=>(l.date||"").slice(0,4)===String(an)).map(l=>({...l,vo:voyageDe(l.date)}));
+    ...S.sorties.filter(s=>s.home===h&&s.type==="hotel"&&nb(s.montant)).map(s=>({k:"hotel",nom:s.nom,date:s.date,v:nb(s.montant)}))]; }
+function renderBudgetLoisirs(){
+  const h=myHome(), an=S.loisAn||new Date().getFullYear();
+  const lignes=loisirsLignes(h).filter(l=>(l.date||"").slice(0,4)===String(an)).map(l=>({...l,vo:voyageDe(l.date)}));
   const som=a=>a.reduce((s,x)=>s+x.v,0);
   const hors=lignes.filter(l=>!l.vo), vac=lignes.filter(l=>l.vo);
   const mois=[...Array(12)].map((_,m)=>{ const k=an+"-"+String(m+1).padStart(2,"0"); return {label:new Date(an,m,1).toLocaleDateString("fr-BE",{month:"short"}).replace(".",""),v:som(hors.filter(l=>l.date.startsWith(k)))}; });
@@ -10413,11 +10416,270 @@ const NV_COURT={accueil:"Famille",calendrier:"Agenda",voyages:"Voyages",cuisine:
 const NV_ICO={accueil:"🏡",calendrier:"📅",voyages:"✈️",cuisine:"🍳",weekends:"☀️",loisirs:"🎟",
   "chez-nous":"🏠",frejus:"🌴",enfants:"🎒",sante:"🩺",bons:"🎁",agenda:"📍",kit72:"🧰",evolutions:"✨"};
 
+/* ---------- Le déménagement de Luxembourg (préfixe dl) ---------- */
+/* La page de Chouchou pour vider et nettoyer l'appartement de Luxembourg avant de rendre les clés.
+   Collection « demenagement » :
+   {genre:"piece", nom, ordre, photos:[url], at}
+   {genre:"objet", piece:<id de la pièce>, nom, dest:"chaumont"|"frejus"|"vendre"|"donner"|"jeter"|"", fait:bool, faitLe, note, at}
+   {genre:"tache", titre, phase:1..4, quand:"AAAA-MM-JJ", fait:bool, faitLe, at}
+   doc « reglages » : {genre:"reglages", cles:"AAAA-MM-JJ"} (le jour où on rend les clés).
+   La tuile et la page ne s'affichent que pour Chouchou. */
+const DL_QUI="chouchou";
+plusColl("demenagement");
+NV_ICO.demenagement="📦"; NV_COURT.demenagement="Déménagement";
+const DL_ICO='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8l9-4 9 4v9l-9 4-9-4z"/><path d="M3 8l9 4 9-4M12 12v9"/><path d="M7.5 6l9 4"/></svg>';
+const DL_DEST=[["chaumont","À Chaumont","🏡","#3b7d4f"],["frejus","À Fréjus","🌴","#2a7fa8"],["vendre","À vendre","💶","#b8860b"],
+  ["donner","À donner","🎁","#8a5cc2"],["jeter","À jeter","🗑️","#7b8a94"]];
+const DLD=Object.fromEntries(DL_DEST.map(d=>[d[0],d]));
+const DL_FAIT={chaumont:"Rentré à Chaumont",frejus:"Parti pour Fréjus",vendre:"Vendu",donner:"Donné",jeter:"Jeté"};
+const DL_PHASES=[[1,"Faire le tour","de novembre à janvier",[11,12,1]],[2,"Vider doucement","de février à mai",[2,3,4,5]],
+  [3,"Les gros meubles","juin et juillet",[6,7]],[4,"Fermer l'appartement","en août",[8,9]]];
+const dlL=()=>S.demenagement||[];
+const dlPieces=()=>dlL().filter(x=>x.genre==="piece").sort((a,b)=>(a.ordre||0)-(b.ordre||0)||(a.at||0)-(b.at||0));
+const dlObjets=p=>dlL().filter(x=>x.genre==="objet"&&(!p||x.piece===p)).sort((a,b)=>(a.fait?1:0)-(b.fait?1:0)||(a.at||0)-(b.at||0));
+const dlTaches=ph=>dlL().filter(x=>x.genre==="tache"&&(!ph||+x.phase===ph)).sort((a,b)=>(a.quand||"9999").localeCompare(b.quand||"9999")||(a.at||0)-(b.at||0));
+const dlReg=()=>dlL().find(x=>x.id==="reglages")||{genre:"reglages"};
+const dlCles=()=>/^\d{4}-\d{2}-\d{2}$/.test(dlReg().cles||"")?dlReg().cles:"2027-08-31";
+const dlSans=d=>{ const {id,...r}=d; return r; };
+const dlJours=(a,b)=>Math.round((new Date(b+"T12:00:00")-new Date(a+"T12:00:00"))/864e5);
+const dlVendredis=(a,b)=>{ let n=0; const z=new Date(a+"T12:00:00"); while(iso(z)<=b){ if(z.getDay()===5) n++; z.setDate(z.getDate()+1); } return n; };
+const dlVendredi=t=>{ const z=new Date(t+"T12:00:00"); z.setDate(z.getDate()+((5-z.getDay()+7)%7)); return iso(z); };
+const dlPhaseNow=()=>{ const m=+todayIso().slice(5,7); return (DL_PHASES.find(p=>p[3].includes(m))||DL_PHASES[0])[0]; };
+const dlNomPiece=id=>(dlL().find(x=>x.id===id)||{}).nom||"";
+const dlPl=(n,un,des)=>n+" "+(n>1?des:un);
+function dlBarre(l){
+  const n=l.length; if(!n) return `<div class="dl-mix"><i style="flex:1;background:var(--line)"></i></div>`;
+  const parts=[...DL_DEST.map(d=>[d[3],l.filter(o=>o.dest===d[0]).length]),["var(--line)",l.filter(o=>!DLD[o.dest]).length]].filter(p=>p[1]);
+  return `<div class="dl-mix">${parts.map(p=>`<i style="flex:${p[1]};background:${p[0]}"></i>`).join("")}</div>`;
+}
+function dlDestSel(o){
+  return `<select class="dl-sel" data-dldest="${esc(o.id)}" aria-label="Où va « ${esc(o.nom)} » ?" style="--c:${DLD[o.dest]?DLD[o.dest][3]:"var(--muted)"}">
+    <option value=""${DLD[o.dest]?"":" selected"}>❓ À décider</option>
+    ${DL_DEST.map(d=>`<option value="${d[0]}"${o.dest===d[0]?" selected":""}>${d[2]} ${esc(d[1])}</option>`).join("")}</select>`;
+}
+
+function renderDemenagement(){
+  if(S.me!==DL_QUI) return `<div class="fr-page">${pageTete("Page personnelle","Le déménagement")}
+    <div class="door"><p class="muted" style="margin:0">Cette page est celle de Chouchou.</p></div></div>`;
+  const t=todayIso(), cles=dlCles(), j=Math.max(0,dlJours(t,cles)), sem=Math.floor(j/7), ven=dlVendredis(t,cles);
+  const obj=dlObjets(), partis=obj.filter(o=>o.fait).length, pct=obj.length?Math.round(partis/obj.length*100):0;
+  const pieces=dlPieces(), ph=dlPhaseNow();
+  const vend=dlVendredi(t), coffre=obj.filter(o=>!o.fait&&(o.dest==="chaumont"||o.dest==="frejus"))
+    .sort((a,b)=>pieces.findIndex(p=>p.id===a.piece)-pieces.findIndex(p=>p.id===b.piece)).slice(0,6);
+  const aDecider=obj.filter(o=>!DLD[o.dest]).length;
+  const hero=`<div class="dl-carton">
+    <span class="dl-scotch" aria-hidden="true"></span>
+    <div class="dl-k">Luxembourg <span aria-hidden="true">→</span> Chaumont</div>
+    <div class="dl-big"><b>${sem}</b> semaine${sem>1?"s":""}${j%7?` <small>et ${dlPl(j%7,"jour","jours")}</small>`:""}</div>
+    <div class="dl-sous">avant de rendre les clés, ${esc(fmtD(cles,{weekday:"long",day:"numeric",month:"long",year:"numeric"}))}</div>
+    <div class="dl-chips"><span>🚗 ${dlPl(ven,"vendredi de retour","vendredis de retour")}</span><span>📦 ${partis} sur ${dlPl(obj.length,"objet","objets")} déjà partis</span>${aDecider?`<span>❓ ${aDecider} à décider</span>`:""}</div>
+    <div class="dl-jauge" role="img" aria-label="${pct} % de l'appartement vidé"><i style="width:${pct}%"></i></div>
+    <div class="dl-pied"><span class="hand">Un coffre par vendredi, et l'appartement se vide tout seul.</span>
+      <button type="button" class="dl-cle" data-dlcles="1">🔑 Changer la date</button></div>
+  </div>`;
+  const vide=!pieces.length?`<div class="door dl-vide"><div class="dl-vide-i" aria-hidden="true">📸</div>
+    <div><h3 style="margin:0 0 4px">On commence par les photos</h3>
+    <p class="muted" style="margin:0">Envoie-moi dans la conversation une photo de chaque pièce. Je range tout ici, objet par objet, avec une proposition de destination que tu n'as plus qu'à corriger.</p>
+    <div class="row" style="margin-top:12px"><button class="btn accent" style="flex:none" data-dlnew="1">Ajouter une pièce moi-même</button></div></div></div>`:"";
+  const blocCoffre=obj.length?`<div class="door dl-coffre"><div class="section-head"><div><div class="eyebrow">Vendredi ${esc(fmtD(vend,{day:"numeric",month:"long"}))}</div>
+      <h3 style="margin:2px 0 0">Ce qui monte dans le coffre</h3></div><span class="dl-auto" aria-hidden="true">🚗</span></div>
+    ${coffre.length?`<div class="items" style="margin-top:8px">${coffre.map(o=>`<div class="item"><div style="min-width:0"><b>${esc(o.nom)}</b>
+        <div class="meta">${esc(dlNomPiece(o.piece))} · ${DLD[o.dest][2]} ${esc(DLD[o.dest][1].replace(/^À /,"pour "))}</div></div>
+        <button type="button" class="react" data-dlfait="${esc(o.id)}">✓ Dans la voiture</button></div>`).join("")}</div>`
+      :`<p class="muted" style="margin:8px 0 0">Rien en attente pour Chaumont ou Fréjus. Choisis la destination des objets dans chaque pièce.</p>`}</div>`:"";
+  const blocDest=obj.length?`<div class="dl-dests">${DL_DEST.map(d=>{ const l=obj.filter(o=>o.dest===d[0]), f=l.filter(o=>o.fait).length;
+      return `<div class="dl-dest" style="--c:${d[3]}"><i aria-hidden="true">${d[2]}</i><b>${l.length}</b><span>${esc(d[1])}</span>${l.length?`<small>✓ ${f} déjà fait${f>1?"s":""}</small>`:""}</div>`; }).join("")}
+    ${aDecider?`<div class="dl-dest" style="--c:var(--muted)"><i aria-hidden="true">❓</i><b>${aDecider}</b><span>À décider</span></div>`:""}</div>`:"";
+  const blocPieces=pieces.length?`<div class="section"><div class="section-head"><h3 style="margin:0">Les pièces</h3><button class="btn ghost" style="flex:none" data-dlnew="1">+ Une pièce</button></div>
+    <div class="dl-pieces">${pieces.map(p=>{ const l=dlObjets(p.id), f=l.filter(o=>o.fait).length, ph1=(p.photos||[])[0];
+      return `<button type="button" class="dl-piece" data-dlgo="${esc(p.id)}">
+        <span class="dl-ph"${ph1?` style="background-image:url('${esc(ph1)}')"`:""}>${ph1?"":"📷"}${l.length&&f===l.length?`<em>✓ Vidée</em>`:""}</span>
+        <span class="dl-pt"><b>${esc(p.nom)}</b><small>${l.length?`${dlPl(l.length,"objet","objets")} · ${f} parti${f>1?"s":""}`:"Rien de noté encore"}</small>${dlBarre(l)}</span></button>`; }).join("")}</div></div>`:"";
+  const blocPlan=`<div class="section"><h3 style="margin:0">Le plan, étape par étape</h3>
+    <div class="dl-plan">${DL_PHASES.map(([n,titre,quand])=>{ const l=dlTaches(n), f=l.filter(x=>x.fait).length;
+      return `<div class="dl-phase${n===ph?" on":""}${l.length&&f===l.length?" fini":""}">
+        <div class="dl-ph-h"><span class="dl-num">${l.length&&f===l.length?"✓":n}</span><div><b>${esc(titre)}</b><small>${esc(quand)}${n===ph?" · on y est":""}</small></div>${l.length?`<span class="dl-cpt">${f}/${l.length}</span>`:""}</div>
+        <div class="dl-taches">${l.map(x=>`<div class="dl-tache${x.fait?" ok":""}"><button type="button" class="dl-coche" data-dltache="${esc(x.id)}" aria-pressed="${!!x.fait}" aria-label="${x.fait?"Remettre à faire":"C'est fait"}">${x.fait?"✓":""}</button>
+          <span>${esc(x.titre)}${x.quand?`<small>${esc(fmtD(x.quand,{day:"numeric",month:"long"}))}</small>`:""}</span>
+          <button type="button" class="dl-x" data-dlsupt="${esc(x.id)}" aria-label="Retirer">×</button></div>`).join("")}
+          <form class="dl-ajout" data-dladdt="${n}"><input name="t" placeholder="Ajouter une chose à faire" autocomplete="off"><button class="react" type="submit">Ajouter</button></form></div></div>`; }).join("")}</div></div>`;
+  return `<div class="fr-page dl-page">${pageTete("Rien que pour toi","Le déménagement de Luxembourg")}
+    ${hero}${vide}${blocCoffre}${blocDest}${blocPieces}${blocPlan}</div>`;
+}
+plusRoute("demenagement",renderDemenagement,"Le déménagement","est dans l'application");
+
+TUILES_PLUS.push(()=>{
+  if(S.me!==DL_QUI) return null;
+  const t=todayIso(), sem=Math.floor(Math.max(0,dlJours(t,dlCles()))/7), obj=dlObjets(), f=obj.filter(o=>o.fait).length;
+  const p=obj.length?`${sem} semaines · ${f} sur ${obj.length} objets partis`:dlPieces().length?`${sem} semaines · on fait le tour des pièces`:`${sem} semaines pour vider l'appartement`;
+  return {r:"demenagement",t:"Le déménagement",c:"#b07a3c",ico:DL_ICO,b:"",p:esc(p)};
+});
+
+/* ----- La fiche d'une pièce : photos et objets ----- */
+function dlPieceHtml(id){
+  const p=dlL().find(x=>x.id===id); if(!p) return `<p class="muted">Cette pièce n'existe plus.</p><button class="btn ghost" data-close style="flex:none">Fermer</button>`;
+  const l=dlObjets(id), f=l.filter(o=>o.fait).length;
+  return `<div class="section-head"><div><div class="eyebrow">${l.length?`${f} sur ${dlPl(l.length,"objet","objets")} partis`:"Une pièce à vider"}</div><h2 style="margin:2px 0 0">${esc(p.nom)}</h2></div>
+      <button class="btn ghost" data-close style="flex:none">Fermer</button></div>
+    <div class="dl-photos">${(p.photos||[]).map((u,i)=>`<a href="${esc(u)}" target="_blank" rel="noopener" class="dl-vig" style="background-image:url('${esc(u)}')" aria-label="Photo ${i+1}"></a>`).join("")}
+      <label class="dl-vig dl-plus">📷<span>Photo</span><input type="file" accept="image/*" data-dlphoto="${esc(id)}" hidden></label></div>
+    ${dlBarre(l)}
+    <div class="items">${l.length?l.map(o=>`<div class="item dl-obj${o.fait?" ok":""}"><div style="min-width:0"><b>${esc(o.nom)}</b>${o.note?`<div class="meta">${esc(o.note)}</div>`:""}
+        ${o.fait?`<div class="meta">✓ ${esc(DL_FAIT[o.dest]||"Parti")}${o.faitLe?" le "+esc(fmtD(o.faitLe,{day:"numeric",month:"long"})):""}</div>`:""}</div>
+        <div class="row" style="flex:none;gap:6px;align-items:center;flex-wrap:nowrap">${dlDestSel(o)}
+          <button type="button" class="react${o.fait?" on":""}" data-dlfait="${esc(o.id)}" title="${o.fait?"Remettre dans l'appartement":"C'est parti"}">${o.fait?"↺":"✓"}</button>
+          <button type="button" class="dl-x" data-dlsupo="${esc(o.id)}" aria-label="Retirer ${esc(o.nom)}">×</button></div></div>`).join("")
+      :`<p class="muted" style="margin:4px 0">Rien de noté. Ajoute les meubles et les gros objets, ou envoie-moi la photo : je fais la liste.</p>`}</div>
+    <form class="dl-ajout" data-dladdo="${esc(id)}"><input name="n" placeholder="Un objet, un meuble…" autocomplete="off" required>
+      <select name="d" class="dl-sel"><option value="">❓ À décider</option>${DL_DEST.map(d=>`<option value="${d[0]}">${d[2]} ${esc(d[1])}</option>`).join("")}</select>
+      <button class="btn accent" type="submit" style="flex:none">Ajouter</button></form>
+    <div class="row" style="justify-content:space-between;margin-top:4px"><button type="button" class="btn ghost" style="flex:none" data-dlren="${esc(id)}">Renommer</button>
+      ${l.length?"":`<button type="button" class="btn ghost" style="flex:none;color:var(--warn)" data-dlsupp="${esc(id)}">Retirer la pièce</button>`}</div>`;
+}
+function dlOuvrir(id){ S.dlP=id; const bg=sheet(`<div id="dl-sheet">${dlPieceHtml(id)}</div>`); dlLier(bg); }
+function dlRafraichir(){
+  const z=document.getElementById("dl-sheet"); if(!z||!S.dlP) return;
+  const a=document.activeElement; if(a&&z.contains(a)&&/^(INPUT|TEXTAREA)$/.test(a.tagName)&&a.value) return;
+  z.innerHTML=dlPieceHtml(S.dlP); dlLier(z);
+}
+async function dlReduire(f){
+  try{ const img=await createImageBitmap(f), k=Math.min(1,1600/Math.max(img.width,img.height));
+    const c=document.createElement("canvas"); c.width=Math.round(img.width*k); c.height=Math.round(img.height*k);
+    c.getContext("2d").drawImage(img,0,0,c.width,c.height);
+    return await new Promise(r=>c.toBlob(b=>r(b||f),"image/jpeg",.82)); }catch(e){ return f; }
+}
+async function dlPhoto(id,f){
+  const p=dlL().find(x=>x.id===id); if(!p||!f) return;
+  toast("Envoi de la photo…");
+  try{ const as=await assetsNs(); if(!as) throw 0; const r=await as.upload(await dlReduire(f)); if(!r||!r.url) throw 0;
+    const q=dlL().find(x=>x.id===id)||p;
+    if(await save("demenagement",{...dlSans(q),photos:[...(q.photos||[]),r.url]},id)) toast("📷 Photo ajoutée à "+q.nom); }
+  catch(e){ toast("La photo n'est pas passée, réessaie."); }
+}
+const dlObj=id=>dlL().find(x=>x.id===id);
+async function dlBasculer(id){ const o=dlObj(id); if(!o) return;
+  const fait=!o.fait; if(await save("demenagement",{...dlSans(o),fait,faitLe:fait?todayIso():""},id)&&fait) toast("📦 "+o.nom+" : "+(DL_FAIT[o.dest]||"parti").toLowerCase()); }
+function dlFormPiece(id){
+  const p=id?dlObj(id):null;
+  const bg=sheet(`<form id="dl-fp" style="display:grid;gap:14px"><h2 style="margin:0">${p?"Renommer la pièce":"Une nouvelle pièce"}</h2>
+    <label>Son nom<input name="n" required value="${esc(p?p.nom:"")}" placeholder="Le salon, la chambre, la cave…" autocomplete="off"></label>
+    <div class="row"><button class="btn ghost" type="button" data-close style="flex:none">Annuler</button><button class="btn accent" type="submit" style="flex:none">${p?"Renommer":"Ajouter"}</button></div></form>`);
+  bg.querySelector("#dl-fp").onsubmit=async e=>{ e.preventDefault(); const n=e.target.n.value.trim(); if(!n) return;
+    const ok=p?await save("demenagement",{...dlSans(p),nom:n},p.id)
+      :await save("demenagement",{genre:"piece",nom:n,ordre:dlPieces().length+1,photos:[],at:Date.now()});
+    if(ok){ closeSheet(); if(p) setTimeout(()=>dlOuvrir(p.id),60); } };
+  setTimeout(()=>{ try{ bg.querySelector("input").focus(); }catch{} },60);
+}
+function dlFormCles(){
+  const bg=sheet(`<form id="dl-fc" style="display:grid;gap:14px"><h2 style="margin:0">Le jour où tu rends les clés</h2>
+    <label>Date<input type="date" name="d" required value="${esc(dlCles())}"></label>
+    <div class="row"><button class="btn ghost" type="button" data-close style="flex:none">Annuler</button><button class="btn accent" type="submit" style="flex:none">Enregistrer</button></div></form>`);
+  bg.querySelector("#dl-fc").onsubmit=async e=>{ e.preventDefault(); const d=e.target.d.value; if(!/^\d{4}-\d{2}-\d{2}$/.test(d)) return;
+    if(await save("demenagement",{...dlSans(dlReg()),genre:"reglages",cles:d,at:Date.now()},"reglages")){ closeSheet(); toast("🔑 Noté"); } };
+}
+function dlLier(root){
+  if(!root||!root.querySelectorAll) return;
+  root.querySelectorAll("[data-dlgo]").forEach(b=>b.onclick=()=>dlOuvrir(b.dataset.dlgo));
+  root.querySelectorAll("[data-dlnew]").forEach(b=>b.onclick=()=>dlFormPiece(""));
+  root.querySelectorAll("[data-dlren]").forEach(b=>b.onclick=()=>dlFormPiece(b.dataset.dlren));
+  root.querySelectorAll("[data-dlcles]").forEach(b=>b.onclick=dlFormCles);
+  root.querySelectorAll("[data-dlfait]").forEach(b=>b.onclick=()=>dlBasculer(b.dataset.dlfait));
+  root.querySelectorAll("[data-dldest]").forEach(s=>s.onchange=()=>{ const o=dlObj(s.dataset.dldest); if(o) save("demenagement",{...dlSans(o),dest:s.value},o.id); });
+  root.querySelectorAll("[data-dlsupo]").forEach(b=>b.onclick=()=>remove("demenagement",b.dataset.dlsupo));
+  root.querySelectorAll("[data-dlsupt]").forEach(b=>b.onclick=()=>remove("demenagement",b.dataset.dlsupt));
+  root.querySelectorAll("[data-dlsupp]").forEach(b=>b.onclick=()=>{ const id=b.dataset.dlsupp; closeSheet(); S.dlP=null; remove("demenagement",id); });
+  root.querySelectorAll("[data-dlphoto]").forEach(i=>i.onchange=()=>{ const f=i.files&&i.files[0]; i.value=""; if(f) dlPhoto(i.dataset.dlphoto,f); });
+  root.querySelectorAll("[data-dltache]").forEach(b=>b.onclick=()=>{ const x=dlObj(b.dataset.dltache); if(x) save("demenagement",{...dlSans(x),fait:!x.fait,faitLe:x.fait?"":todayIso()},x.id); });
+  root.querySelectorAll("form[data-dladdt]").forEach(f=>f.onsubmit=async e=>{ e.preventDefault(); const v=f.t.value.trim(); if(!v) return;
+    if(await save("demenagement",{genre:"tache",titre:v,phase:+f.dataset.dladdt,quand:"",fait:false,at:Date.now()})) f.t.value=""; });
+  root.querySelectorAll("form[data-dladdo]").forEach(f=>f.onsubmit=async e=>{ e.preventDefault(); const v=f.n.value.trim(); if(!v) return;
+    if(await save("demenagement",{genre:"objet",piece:f.dataset.dladdo,nom:v,dest:f.d.value,fait:false,at:Date.now()})){ f.n.value=""; f.n.focus(); } });
+}
+BIND_PLUS.push(root=>{ if(root&&root.id==="app"){ dlLier(root); dlRafraichir(); } });
+
+(function(){ if(document.getElementById("dl-css")) return; document.head.insertAdjacentHTML("beforeend",`<style id="dl-css">
+.dl-page{--kraft:#d8b98c;--kraft2:#c9a473;--kraft-ink:#3d2a14}
+:root[data-theme="dark"] .dl-page{--kraft:#6b5236;--kraft2:#58432b;--kraft-ink:#f6e7cf}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .dl-page{--kraft:#6b5236;--kraft2:#58432b;--kraft-ink:#f6e7cf}}
+.dl-carton{position:relative;overflow:hidden;border-radius:22px;padding:22px 20px 18px;color:var(--kraft-ink);
+  background:repeating-linear-gradient(92deg,rgba(0,0,0,.025) 0 2px,transparent 2px 7px),linear-gradient(160deg,var(--kraft),var(--kraft2));
+  box-shadow:0 18px 34px -24px rgba(61,42,20,.9),inset 0 0 0 1px rgba(61,42,20,.12);display:grid;gap:8px}
+.dl-scotch{position:absolute;left:50%;top:-6px;translate:-50% 0;width:120px;height:26px;background:rgba(240,228,200,.75);transform:rotate(-2deg);box-shadow:0 2px 4px rgba(0,0,0,.12)}
+:root[data-theme="dark"] .dl-scotch{background:rgba(220,200,160,.35)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .dl-scotch{background:rgba(220,200,160,.35)}}
+.dl-k{font-size:12px;text-transform:uppercase;letter-spacing:.14em;font-weight:800;opacity:.8}
+.dl-big{font-family:var(--f-display);font-size:clamp(26px,6vw,34px);font-weight:700;line-height:1}
+.dl-big b{font-size:2.1em;font-weight:800;letter-spacing:-.03em}
+.dl-big small{font-size:.5em;font-weight:600;opacity:.8}
+.dl-sous{font-size:15px;opacity:.9}
+.dl-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:2px}
+.dl-chips span{background:rgba(255,255,255,.42);border-radius:999px;padding:4px 11px;font-size:13.5px;font-weight:700}
+:root[data-theme="dark"] .dl-chips span{background:rgba(0,0,0,.22)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .dl-chips span{background:rgba(0,0,0,.22)}}
+.dl-jauge{height:12px;border-radius:999px;background:rgba(61,42,20,.16);overflow:hidden;margin-top:4px}
+.dl-jauge i{display:block;height:100%;min-width:6px;border-radius:999px;background:linear-gradient(90deg,#3b7d4f,#5cae6f)}
+.dl-pied{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.dl-pied .hand{font-size:19px}
+.dl-cle{border:1px solid rgba(61,42,20,.35);background:rgba(255,255,255,.35);color:inherit;border-radius:999px;padding:6px 12px;font-weight:700;font-size:13px}
+.dl-vide{display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:start}
+.dl-vide-i{font-size:34px;width:56px;height:56px;border-radius:16px;display:grid;place-items:center;background:color-mix(in srgb,#b07a3c 18%,var(--door))}
+.dl-coffre{border-left:6px solid #3b7d4f}
+.dl-auto{font-size:30px}
+.dl-dests{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:10px}
+.dl-dest{display:grid;gap:0;padding:12px;border-radius:16px;background:color-mix(in srgb,var(--c) 12%,var(--door));border:1px solid color-mix(in srgb,var(--c) 40%,var(--line))}
+.dl-dest i{font-style:normal;font-size:22px}
+.dl-dest b{font-family:var(--f-display);font-size:28px;line-height:1.05;color:var(--c)}
+.dl-dest span{font-weight:700;font-size:14px}
+.dl-dest small{font-size:12px;color:var(--muted)}
+.dl-pieces{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px}
+.dl-piece{display:grid;gap:0;padding:0;border:1px solid var(--line);border-radius:18px;overflow:hidden;background:var(--door);text-align:left;box-shadow:var(--tile-shadow);transition:transform .15s ease}
+.dl-piece:hover{transform:translateY(-2px)}
+.dl-ph{position:relative;display:grid;place-items:center;aspect-ratio:4/3;font-size:30px;background:color-mix(in srgb,#b07a3c 14%,var(--soft)) center/cover no-repeat}
+.dl-ph em{position:absolute;left:8px;top:8px;font-style:normal;font-size:12px;font-weight:800;background:#3b7d4f;color:#fff;border-radius:999px;padding:2px 9px}
+.dl-pt{display:grid;gap:4px;padding:10px 12px 12px}
+.dl-pt b{font-family:var(--f-display);font-size:17px;line-height:1.15}
+.dl-pt small{font-size:12.5px;color:var(--muted)}
+.dl-mix{display:flex;height:7px;border-radius:999px;overflow:hidden;gap:2px;margin-top:2px}
+.dl-mix i{display:block;height:100%}
+.dl-plan{display:grid;gap:10px}
+@media(min-width:760px){.dl-plan{grid-template-columns:1fr 1fr}}
+.dl-phase{border:1px solid var(--line);border-radius:18px;padding:14px;background:var(--door);display:grid;gap:8px}
+.dl-phase.on{border:2px solid #b07a3c;background:color-mix(in srgb,#b07a3c 8%,var(--door))}
+.dl-phase.fini{opacity:.75}
+.dl-ph-h{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center}
+.dl-ph-h b{display:block;font-family:var(--f-display);font-size:17px}
+.dl-ph-h small{font-size:12.5px;color:var(--muted)}
+.dl-num{width:32px;height:32px;border-radius:50%;display:grid;place-items:center;font-weight:800;background:color-mix(in srgb,#b07a3c 22%,var(--door));color:var(--ink)}
+.dl-phase.on .dl-num{background:#b07a3c;color:#fff}
+.dl-cpt{font-size:13px;font-weight:700;color:var(--muted);font-variant-numeric:tabular-nums}
+.dl-taches{display:grid;gap:2px}
+.dl-tache{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;padding:6px 0;border-top:1px dashed var(--line)}
+.dl-tache span{line-height:1.3}
+.dl-tache small{display:block;font-size:12px;color:var(--muted)}
+.dl-tache.ok span{text-decoration:line-through;color:var(--muted)}
+.dl-coche{width:26px;height:26px;border-radius:8px;border:2px solid var(--line);background:var(--door);display:grid;place-items:center;font-weight:800;color:#fff;padding:0}
+.dl-coche[aria-pressed="true"]{background:#3b7d4f;border-color:#3b7d4f}
+.dl-x{border:0;background:none;color:var(--muted);font-size:20px;line-height:1;padding:2px 6px;border-radius:8px}
+.dl-x:hover{color:var(--warn)}
+.dl-ajout{display:flex;gap:8px;margin-top:6px;flex-wrap:wrap}
+.dl-ajout input{flex:1;min-width:150px;padding:8px 10px}
+.dl-ajout select{width:auto;flex:none}
+.dl-sel{width:auto;max-width:150px;padding:6px 8px;font-size:13.5px;font-weight:700;border:2px solid var(--c,var(--line));color:var(--ink)}
+.dl-photos{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px}
+.dl-vig{flex:none;width:96px;height:72px;border-radius:12px;background:var(--soft) center/cover no-repeat;border:1px solid var(--line)}
+.dl-plus{display:grid;place-items:center;align-content:center;gap:0;font-size:22px;cursor:pointer;border-style:dashed;font-weight:700}
+.dl-plus span{font-size:12px;color:var(--muted)}
+.dl-obj.ok b{text-decoration:line-through;color:var(--muted)}
+.dl-obj .row>*{flex:none;min-width:0}
+@media(max-width:470px){.dl-obj{grid-template-columns:1fr}.dl-obj > .row{justify-content:flex-end}.dl-vide{grid-template-columns:1fr}}
+</style>`); })();
+
+
 function nvToutes(){
   const r=route();
   return `<h2 style="margin:0">Toutes les pages</h2>
   <p class="muted" style="margin:0">Les six de la barre du bas, et toutes les autres.</p>
-  <div class="nv-g">${ROUTES.map(k=>`<a href="#${esc(k)}" data-nvgo="${esc(k)}"${k===r?' aria-current="page"':""}>
+  <div class="nv-g">${ROUTES.filter(k=>k!=="demenagement"||S.me===DL_QUI).map(k=>`<a href="#${esc(k)}" data-nvgo="${esc(k)}"${k===r?' aria-current="page"':""}>
     <i aria-hidden="true">${esc(NV_ICO[k]||"•")}</i><b>${esc(NOM_ONGLET[k]||k)}</b></a>`).join("")}</div>
   <div class="row" style="margin-top:2px"><button class="btn ghost" data-close style="flex:none">Fermer</button></div>`;
 }
@@ -11073,7 +11335,7 @@ BIND_PLUS.push(root=>{
 const MW_ICO='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/><path d="m8 15 2.5-2.5L13 15l3-3"/></svg>';
 const mwDefaut = () => { const t=todayIso(); if(+t.slice(8)<=7){ const d=new Date(t.slice(0,7)+"-01T12:00:00"); d.setMonth(d.getMonth()-1); return iso(d).slice(0,7); } return t.slice(0,7); };
 const mwNom = ym => { const s=fmtD(ym+"-01",{month:"long",year:"numeric"}); return s; };
-const mwDecale = (ym,n) => { const d=new Date(ym+"-01T12:00:00"); d.setMonth(d.getMonth()+n); return iso(d).slice(0,7); };
+const mwDecale = (ym,n) => addMois(ym+"-01",n).slice(0,7);
 const mwDe = (x,ym) => { const a=+x.at; return a&&iso(new Date(a)).slice(0,7)===ym; };
 function mwDonnees(ym){
   const photos=(S.photos||[]).filter(x=>mwDe(x,ym)&&photoOk(x.url));
@@ -11097,7 +11359,7 @@ TUILES_PLUS.push(()=>{ const ym=mwDefaut(), d=mwDonnees(ym); const n=d.photos.le
   return {r:"mois",t:"Le mois des Willys",c:"#c8456b",ico:MW_ICO,b:+todayIso().slice(8)<=3?"✨":"",p:esc(mwNom(ym)+(n?" · "+n+" souvenir"+(n>1?"s":""):""))}; });
 function renderMois(){
   const ym=S.mwYm||mwDefaut(), d=mwDonnees(ym), enCours=ym===todayIso().slice(0,7), apres=mwDecale(ym,1)<=todayIso().slice(0,7);
-  const nav=`<div class="row" style="flex:none;gap:6px"><button class="react" style="flex:none;min-width:0" data-mwgo="-1" aria-label="Mois précédent">‹</button>${apres?`<button class="react" style="flex:none;min-width:0" data-mwgo="1" aria-label="Mois suivant">›</button>`:""}</div>`;
+  const nav=`<div class="row tight" style="flex:none;gap:6px"><button class="react" data-mwgo="-1" aria-label="Mois précédent">‹</button>${apres?`<button class="react" data-mwgo="1" aria-label="Mois suivant">›</button>`:""}</div>`;
   const photo=x=>`<figure class="polar" style="margin:0"><img src="${esc(x.url)}" alt="${esc(x.legend||"")}" loading="lazy" data-grand="${esc(x.id)}"><figcaption class="cap">${esc(x.legend||"")}</figcaption><div class="bas"><span class="stack">${(x.who||[]).slice(0,4).map(k=>mag(k,"sm")).join("")}</span></div></figure>`;
   const sortie=s=>{ const av=Object.entries(s.avis||{}).filter(([,a])=>a&&a.stars), moy=av.length?av.reduce((t,[,a])=>t+ +a.stars,0)/av.length:0, mot=av.map(([k,a])=>a.mot?`« ${a.mot} » (${M[k]?M[k].n:k})`:"").filter(Boolean).join(" ");
     return `<div class="item"><div style="min-width:0"><b>${s.type==="hotel"?"🏨":"🍽"} ${esc(s.nom||"")}</b> <span class="hint">${esc(fmtD(s.date,{day:"numeric",month:"short"}))}${s.lieu?" · "+esc(s.lieu):""}</span>${mot?`<div class="hint">${esc(mot)}</div>`:""}</div><span>${moy?"★".repeat(Math.round(moy)):""}</span></div>`; };
@@ -11220,7 +11482,7 @@ function renderSemaine(){
       ${ts.map(([x,i])=>tache(x,i)).join("")}</div>`; };
   const libres=tk.map((x,i)=>[x,i]).filter(([x])=>!x.j);
   const foyerM=(HM[myHome()]&&HM[myHome()].members)||[S.me];
-  return `${pageTete("Le plan de la semaine · "+esc(HM[myHome()]?HM[myHome()].n:""),"La semaine",`<div class="row" style="flex:none;gap:6px"><button class="react" style="flex:none;min-width:0" data-smgo="-1" aria-label="Semaine précédente">‹</button>${off?`<button class="react" style="flex:none;min-width:0" data-smgo="0">Cette semaine</button>`:""}<button class="react" style="flex:none;min-width:0" data-smgo="1" aria-label="Semaine suivante">›</button></div>`)}
+  return `${pageTete("Le plan de la semaine · "+esc(HM[myHome()]?HM[myHome()].n:""),"La semaine",`<div class="row tight" style="flex:none;gap:6px"><button class="react" data-smgo="-1" aria-label="Semaine précédente">‹</button>${off?`<button class="react" data-smgo="0">Cette semaine</button>`:""}<button class="react" data-smgo="1" aria-label="Semaine suivante">›</button></div>`)}
   <p class="hint" style="margin:6px 0 0;text-transform:none">${esc(titre)}${off===0?" · cette semaine":""}</p>
   <div class="door sm-pr" data-rp="fixe" style="margin-top:12px"><h3>⭐ Les 3 priorités de la semaine</h3>
     ${pr.map((p,i)=>`<label class="sm-prl"><span>${i+1}</span><input data-smp="${i}" value="${esc(p)}" placeholder="${["Ex. mettre les joints aux fenêtres","Ex. réserver le resto pour l'anniversaire","Ex. préparer le brunch de la Saint-Nicolas"][i]}"></label>`).join("")}</div>
@@ -11270,10 +11532,12 @@ const RT_TYPE=[["jour","Cuisine","Vaisselle et plan de travail"],["jour","Cuisin
   ["semaine","Cuisine","Vider le frigo de ce qui est périmé"],["semaine","Salle de bain","Lavabo, douche et WC"],["semaine","Chambres","Changer les draps"],["semaine","Partout","Aspirateur"],
   ["semaine","Linge","Lessives et repassage"],["semaine","Partout","Sortir le tri (PMC, papier)"],["mois","Cuisine","Four et micro-ondes"],["mois","Cuisine","Détartrer la bouilloire et la machine à café"],
   ["mois","Partout","Poussières en hauteur"],["mois","Salle de bain","Nettoyer les joints et la bonde"],["mois","Extérieur","Terrasse et entrée"],["mois","Partout","Vérifier détecteurs de fumée"]];
-const rtPeriode = (f,d) => { d=d||todayIso(); if(f==="jour") return d; if(f==="mois") return d.slice(0,7); const x=new Date(d+"T12:00:00"); x.setDate(x.getDate()-((x.getDay()+6)%7)); return iso(x); };
+const rtPeriode = (f,d) => { d=d||todayIso(); return f==="jour"?d:f==="mois"?d.slice(0,7):lundiIso(d); };
 const rtDoc = () => (S.routines||[]).find(x=>x.id===myHome())||{taches:[]};
 const rtFait = x => (S.routinesfait||[]).find(r=>r.id===myHome()+"_"+x.id+"_"+rtPeriode(x.freq));
-async function rtEcrire(taches){ const d={taches,by:S.me,at:Date.now()}; if(await save("routines",d,myHome())){ const i=S.routines.findIndex(x=>x.id===myHome()); if(i>=0) S.routines[i]={id:myHome(),...d}; else S.routines.push({id:myHome(),...d}); render(); } }
+/* Écrit le document d'un foyer (id = le foyer) et met tout de suite la copie locale à jour. */
+async function ecrireFoyer(coll,data){ const id=myHome(), d={...data,by:S.me,at:Date.now()}; if(!await save(coll,d,id)) return false; S[coll]=[...(S[coll]||[]).filter(x=>x.id!==id),{id,...d}]; render(); return true; }
+const rtEcrire = taches => ecrireFoyer("routines",{taches});
 TUILES_PLUS.push(()=>{ const ts=rtDoc().taches||[]; if(!ts.length) return {r:"routines",t:"Routines maison",c:"#2c9a8a",ico:RT_ICO,b:"",p:"Le ménage partagé, pièce par pièce"};
   const j=ts.filter(x=>x.freq==="jour"), s=ts.filter(x=>x.freq==="semaine"), fj=j.filter(rtFait).length, fs=s.filter(rtFait).length;
   return {r:"routines",t:"Routines maison",c:"#2c9a8a",ico:RT_ICO,b:j.length-fj?String(j.length-fj):"",p:esc(`Aujourd'hui ${fj}/${j.length} · semaine ${fs}/${s.length}`)}; });
@@ -11375,69 +11639,76 @@ if(!window.__cdTimer) window.__cdTimer=setInterval(()=>{ try{ if(!cdOn()) return
 document.addEventListener("visibilitychange",()=>{ try{ if(document.visibilityState==="visible"&&cdOn()&&!window.__cdLock&&navigator.wakeLock) navigator.wakeLock.request("screen").then(l=>{ window.__cdLock=l; l.addEventListener("release",()=>{ window.__cdLock=null; }); }).catch(()=>{}); }catch{} });
 /* ---------- Le budget du mois du foyer (préfixe bd) ---------- */ /* Privé : ne s'affiche qu'une fois l'espace du foyer ouvert avec son code (comme le frigo et les tickets).
    Collection budgets, un document par foyer : {categories:[{k, n, ico, budget}], revenus:[{n, montant}], epargne (objectif mensuel), by, at} — on l'écrit une fois, il vaut pour tous les mois.
-   Collection depensesfoyer : {home, date, montant, cat, note, by, at}. S'ajoutent tout seuls : les tickets de courses du foyer (alimentation) et les restos, sorties et hôtels notés avec un prix (loisirs, vacances). */
+   Collection depensesfoyer : {home, date, montant, cat, note, by, at}. S'ajoutent tout seuls : les tickets de courses du foyer (alimentation), et les restos et hôtels comptés dans le budget Loisirs (loisirsLignes). */
 plusColl("budgets"); plusColl("depensesfoyer",(a,b)=>(b.date||"").localeCompare(a.date||""));
 const BD_ICO='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h18v12H3z"/><path d="M3 11h18"/><path d="M16 15h2"/><path d="M7 7V5h10v2"/></svg>';
-const BD_CATS0=[["logement","Logement et crédit","🏠",0],["alimentation","Courses et alimentation","🛒",0],["energie","Énergie et eau","⚡",0],["transport","Voiture et transport","🚗",0],
-  ["sante","Santé","🩺",0],["petites","Les petites","🧸",0],["loisirs","Restos et sorties","🍽",0],["vacances","Vacances et Fréjus","🌴",0],["cadeaux","Cadeaux","🎁",0],
-  ["abos","Abonnements, GSM, internet","📱",0],["maison","Maison et travaux","🛠",0],["divers","Divers","🧾",0]];
-const bdDoc = () => (S.budgets||[]).find(x=>x.id===myHome())||{categories:BD_CATS0.map(([k,n,ico,budget])=>({k,n,ico,budget})),revenus:[{n:"Salaires",montant:0}],epargne:0};
-const bdCats = () => { const c=bdDoc().categories; return Array.isArray(c)&&c.length?c:BD_CATS0.map(([k,n,ico,budget])=>({k,n,ico,budget})); };
-const bdMoisDe = d => String(d||"").slice(0,7);
-function bdLignes(ym){ const h=myHome(), l=[];
-  (S.depensesfoyer||[]).filter(x=>x.home===h&&bdMoisDe(x.date)===ym).forEach(x=>l.push({id:x.id,date:x.date,montant:+x.montant||0,cat:x.cat||"divers",note:x.note||"",by:x.by,src:"main"}));
-  (S.tickets||[]).filter(t=>t.home===h&&bdMoisDe(t.date)===ym&&+t.total>0).forEach(t=>l.push({date:t.date,montant:+t.total,cat:"alimentation",note:t.shop||"Courses",by:t.by,src:"ticket"}));
-  (S.sorties||[]).filter(s=>s.home===h&&bdMoisDe(s.date)===ym&&+s.montant>0).forEach(s=>l.push({date:s.date,montant:+s.montant,cat:s.type==="hotel"?"vacances":"loisirs",note:s.nom||"",by:s.by,src:"sortie"}));
-  return l.sort((a,b)=>(b.date||"").localeCompare(a.date||"")); }
-const bdSomme = l => Math.round(l.reduce((s,x)=>s+(+x.montant||0),0)*100)/100;
-const bdRevenus = () => bdSomme((bdDoc().revenus||[]).map(r=>({montant:r.montant})));
+const BD_CATS0=[{k:"logement",n:"Logement et crédit",ico:"🏠"},{k:"alimentation",n:"Courses et alimentation",ico:"🛒"},{k:"energie",n:"Énergie et eau",ico:"⚡"},{k:"transport",n:"Voiture et transport",ico:"🚗"},
+  {k:"sante",n:"Santé",ico:"🩺"},{k:"petites",n:"Les petites",ico:"🧸"},{k:"loisirs",n:"Restos et sorties",ico:"🍽"},{k:"vacances",n:"Vacances et Fréjus",ico:"🌴"},{k:"cadeaux",n:"Cadeaux",ico:"🎁"},
+  {k:"abos",n:"Abonnements, GSM, internet",ico:"📱"},{k:"maison",n:"Maison et travaux",ico:"🛠"},{k:"divers",n:"Divers",ico:"🧾"}];
+/* Le document du foyer, toujours complet : {enregistre, categories, revenus, epargne}. */
+const bdDoc = () => { const d=(S.budgets||[]).find(x=>x.id===myHome());
+  return {enregistre:!!d, categories:d&&Array.isArray(d.categories)&&d.categories.length?d.categories:BD_CATS0, revenus:(d&&d.revenus)||[{n:"Salaires",montant:0}], epargne:nb(d&&d.epargne)}; };
+const bdMois = () => todayIso().slice(0,7);
+const bdSomme = (l,k="montant") => Math.round(l.reduce((s,x)=>s+nb(x[k]),0)*100)/100;
 const bdE = n => eur(n).replace(",00 €"," €");
+/* Toutes les dépenses du foyer : notées à la main, tickets de courses, restos et hôtels du budget Loisirs. */
+function bdLignes(){ const h=myHome();
+  return [
+    ...(S.depensesfoyer||[]).filter(x=>x.home===h&&nb(x.montant)).map(x=>({id:x.id,date:x.date||"",montant:nb(x.montant),cat:x.cat||"divers",note:x.note||"",src:"main"})),
+    ...(S.tickets||[]).filter(t=>t.home===h&&nb(t.total)).map(t=>({date:t.date||"",montant:nb(t.total),cat:"alimentation",note:t.shop||"Courses",src:"ticket"})),
+    ...loisirsLignes(h).map(l=>({date:l.date||"",montant:l.v,cat:l.k==="hotel"?"vacances":"loisirs",note:l.nom||"",src:"loisirs"}))]; }
+/* Total par mois, en un seul passage. */
+const bdParMois = L => L.reduce((m,x)=>{ const k=x.date.slice(0,7); m[k]=(m[k]||0)+x.montant; return m; },{});
 TUILES_PLUS.push(()=>{ const h=myHome(); if(!HM[h]||h==="frejus") return null;
   if(!isUnlocked(h)) return {r:"budget-mois",t:"Budget du mois",c:"#2f8a5b",ico:BD_ICO,b:"🔒",p:"Privé au foyer : il s'ouvre avec votre code"};
-  const ym=todayIso().slice(0,7), dep=bdSomme(bdLignes(ym)), bud=bdCats().reduce((s,c)=>s+(+c.budget||0),0);
+  const dep=bdParMois(bdLignes())[bdMois()]||0, bud=bdSomme(bdDoc().categories,"budget");
   return {r:"budget-mois",t:"Budget du mois",c:"#2f8a5b",ico:BD_ICO,b:"",p:esc(bud?`${bdE(dep)} sur ${bdE(bud)} · reste ${bdE(bud-dep)}`:`${bdE(dep)} dépensés ce mois`)}; });
+/* Ce qu'il faut pour afficher un mois : lignes, totaux par catégorie, catégories. */
+function bdMoisDonnees(ym){ const d=bdDoc(), tout=bdLignes(), L=tout.filter(x=>x.date.slice(0,7)===ym).sort((a,b)=>b.date.localeCompare(a.date));
+  const parCat=L.reduce((m,x)=>{ m[x.cat]=(m[x.cat]||0)+x.montant; return m; },{}), cat=new Map(d.categories.map(c=>[c.k,c]));
+  return {d, tout, L, parCat, cat, dep:bdSomme(L), rev:bdSomme(d.revenus), bud:bdSomme(d.categories,"budget")}; }
 function renderBudgetMois(){
   const h=myHome();
   if(h==="frejus"||!HM[h]) return `${pageTete("Budget","Budget du mois","")}<div class="empty" style="margin-top:12px">Le budget se tient par foyer : choisis ton prénom dans un foyer.</div>`;
   if(!isUnlocked(h)) return `${pageTete("Espace privé · "+esc(HM[h].n),"Budget du mois","")}<div class="door lock" style="margin-top:12px;padding:24px"><div style="font-size:40px">🔒</div><p class="muted" style="margin:0;max-width:36ch">Le budget n'est visible que par votre foyer. Ouvre d'abord votre espace avec le code, puis reviens ici.</p><a class="btn accent" href="#chez-nous" style="text-decoration:none">Ouvrir l'espace du foyer</a></div>`;
-  const ym=S.bdYm||todayIso().slice(0,7), cats=bdCats(), L=bdLignes(ym), dep=bdSomme(L), rev=bdRevenus(), bud=cats.reduce((s,c)=>s+(+c.budget||0),0), ep=Math.round((rev-dep)*100)/100, obj=+bdDoc().epargne||0;
-  const parCat=Object.fromEntries(cats.map(c=>[c.k,bdSomme(L.filter(x=>x.cat===c.k))])); const horsCat=L.filter(x=>!cats.some(c=>c.k===x.cat));
-  const enCours=ym===todayIso().slice(0,7), jour=+todayIso().slice(8), nbJ=new Date(+ym.slice(0,4),+ym.slice(5,7),0).getDate(), rythme=enCours?jour/nbJ:1;
-  const barre=c=>{ const r=parCat[c.k]||0, b=+c.budget||0, pc=b?Math.min(100,Math.round(r/b*100)):0, etat=!b?"":r>b?"bd-trop":r>b*rythme*1.1?"bd-vite":"bd-ok";
+  const ym=S.bdYm||bdMois(), {d,tout,L,parCat,cat,dep,rev,bud}=bdMoisDonnees(ym), cats=d.categories, ep=rev-dep;
+  const horsCat=bdSomme(L.filter(x=>!cat.has(x.cat)));
+  const enCours=ym===bdMois(), jour=+todayIso().slice(8), nbJ=new Date(+ym.slice(0,4),+ym.slice(5,7),0).getDate(), rythme=enCours?jour/nbJ:1;
+  const barre=c=>{ const r=parCat[c.k]||0, b=nb(c.budget), pc=b?Math.min(100,Math.round(r/b*100)):0, etat=!b?"":r>b?"bd-trop":r>b*rythme*1.1?"bd-vite":"bd-ok";
     return `<div class="bd-c"><div class="bd-ch"><span>${esc(c.ico||"")} <b>${esc(c.n)}</b></span><span class="bd-m ${etat}">${esc(bdE(r))}${b?` <small>/ ${esc(bdE(b))}</small>`:""}</span></div>${b?`<div class="bd-bar"><i class="${etat}" style="width:${pc}%"></i>${enCours?`<em style="left:${Math.round(rythme*100)}%"></em>`:""}</div>`:""}</div>`; };
-  const ligne=x=>{ const c=cats.find(c=>c.k===x.cat); return `<div class="item"><div style="min-width:0"><b>${esc(x.note||(c?c.n:x.cat))}</b> <span class="hint">${esc(fmtD(x.date,{day:"numeric",month:"short"}))} · ${esc(c?c.ico+" "+c.n:x.cat)}${x.src==="ticket"?" · ticket de courses":x.src==="sortie"?" · noté dans Loisirs":""}</span></div><span style="display:flex;gap:6px;align-items:center"><b style="font-variant-numeric:tabular-nums">${esc(eur(x.montant))}</b>${x.src==="main"?`<button class="react" data-bddel="${esc(x.id)}" aria-label="Retirer">✕</button>`:""}</span></div>`; };
-  const hist=[-5,-4,-3,-2,-1,0].map(n=>{ const d=new Date(ym+"-01T12:00:00"); d.setMonth(d.getMonth()+n); const m=iso(d).slice(0,7); return {m,v:bdSomme(bdLignes(m))}; }), mx=Math.max(1,...hist.map(x=>x.v));
-  const nav=`<div class="row" style="flex:none;gap:6px"><button class="react" style="flex:none;min-width:0" data-bdgo="-1" aria-label="Mois précédent">‹</button>${enCours?"":`<button class="react" style="flex:none;min-width:0" data-bdgo="0">Ce mois</button><button class="react" style="flex:none;min-width:0" data-bdgo="1" aria-label="Mois suivant">›</button>`}</div>`;
-  const d=bdDoc();
+  const ligne=x=>{ const c=cat.get(x.cat); return `<div class="item"><div style="min-width:0"><b>${esc(x.note||(c?c.n:x.cat))}</b> <span class="hint">${esc(fmtD(x.date,{day:"numeric",month:"short"}))} · ${esc(c?c.ico+" "+c.n:x.cat)}${x.src==="ticket"?" · ticket de courses":x.src==="loisirs"?" · noté dans Loisirs":""}</span></div><span style="display:flex;gap:6px;align-items:center"><b style="font-variant-numeric:tabular-nums">${esc(eur(x.montant))}</b>${x.src==="main"?`<button class="react" data-bddel="${esc(x.id)}" aria-label="Retirer">✕</button>`:""}</span></div>`; };
+  const parMois=bdParMois(tout), hist=[-5,-4,-3,-2,-1,0].map(n=>{ const m=mwDecale(ym,n); return {m,v:parMois[m]||0}; }), mx=Math.max(1,...hist.map(x=>x.v)), pleins=hist.filter(x=>x.v);
+  const revenus=[...d.revenus,...Array(S.bdRevPlus||0).fill({n:"",montant:""})];
+  const nav=`<div class="row tight" style="flex:none;gap:6px"><button class="react" data-bdgo="-1" aria-label="Mois précédent">‹</button>${enCours?"":`<button class="react" data-bdgo="0">Ce mois</button><button class="react" data-bdgo="1" aria-label="Mois suivant">›</button>`}</div>`;
   return `${pageTete("Espace privé · "+esc(HM[h].n),"Budget du mois",nav)}
-  <p class="hint" style="margin:6px 0 0">${esc((m=>m.charAt(0).toUpperCase()+m.slice(1))(fmtD(ym+"-01",{month:"long",year:"numeric"})))}${enCours?" · jour "+jour+" sur "+nbJ:""}</p>
+  <p class="hint" style="margin:6px 0 0">${esc(acCap(mwNom(ym)))}${enCours?" · jour "+jour+" sur "+nbJ:""}</p>
   <div class="stats" style="margin-top:12px">
     <div class="stat"><b>${esc(bdE(rev))}</b><span>revenus</span></div>
     <div class="stat"><b>${esc(bdE(dep))}</b><span>dépensés${bud?" sur "+esc(bdE(bud))+" prévus":""}</span></div>
-    <div class="stat"><b style="color:${ep>=0?"var(--ok)":"var(--warn)"}">${esc(bdE(ep))}</b><span>${ep>=0?"restent (revenus − dépenses notées)":"de plus que les revenus"}${obj?" · objectif "+esc(bdE(obj)):""}</span></div></div>
+    <div class="stat"><b style="color:${ep>=0?"var(--ok)":"var(--warn)"}">${esc(bdE(ep))}</b><span>${ep>=0?"restent (revenus − dépenses notées)":"de plus que les revenus"}${d.epargne?" · objectif "+esc(bdE(d.epargne)):""}</span></div></div>
   <div class="door" data-rp="fixe" style="margin-top:12px"><h3>Ajouter une dépense</h3>
     <div class="row" style="gap:6px;margin-top:8px"><input id="bd-m" inputmode="decimal" placeholder="Montant (€)" style="flex:1;min-width:100px"><select id="bd-c" style="flex:2;min-width:150px">${cats.map(c=>`<option value="${esc(c.k)}">${esc(c.ico+" "+c.n)}</option>`).join("")}</select>
       <input id="bd-n" placeholder="Pour quoi ? (ex. plein d'essence)" style="flex:2;min-width:150px"><input id="bd-d" type="date" value="${esc(enCours?todayIso():ym+"-01")}" style="flex:1;min-width:130px"><button class="btn accent" style="flex:none" id="bd-add">Ajouter</button></div>
-    <p class="hint" style="margin:6px 0 0">Les tickets de courses du foyer et les restos, sorties et hôtels notés avec un prix s'ajoutent tout seuls.</p></div>
+    <p class="hint" style="margin:6px 0 0">Les tickets de courses du foyer, et les restos et hôtels comptés dans le budget Loisirs, s'ajoutent tout seuls.</p></div>
   <div class="door" data-rp="fixe" style="margin-top:12px"><div class="section-head"><h3>Budget et réel, par catégorie</h3>${enCours?`<span class="hint">le trait = où on devrait en être aujourd'hui</span>`:""}</div>
-    <div style="display:grid;gap:10px;margin-top:10px">${cats.map(barre).join("")}${horsCat.length?`<div class="bd-c"><div class="bd-ch"><span>🧾 <b>Autres</b></span><span class="bd-m">${esc(bdE(bdSomme(horsCat)))}</span></div></div>`:""}</div></div>
+    <div style="display:grid;gap:10px;margin-top:10px">${cats.map(barre).join("")}${horsCat?`<div class="bd-c"><div class="bd-ch"><span>🧾 <b>Autres</b></span><span class="bd-m">${esc(bdE(horsCat))}</span></div></div>`:""}</div></div>
   <div class="door" style="margin-top:12px"><h3>Les 6 derniers mois</h3><div class="wbars">${hist.map(x=>`<div><i style="height:${Math.max(3,Math.round(x.v/mx*100))}%" title="${esc(bdE(x.v))}"></i><span>${esc(fmtD(x.m+"-01",{month:"short"}))}</span></div>`).join("")}</div>
-    <p class="hint" style="margin:0">${hist.filter(x=>x.v).length>1?`Moyenne : ${esc(bdE(bdSomme(hist.filter(x=>x.v).map(x=>({montant:x.v})))/hist.filter(x=>x.v).length))} par mois.`:"La courbe se remplit au fil des mois."}</p></div>
+    <p class="hint" style="margin:0">${pleins.length>1?`Moyenne : ${esc(bdE(bdSomme(pleins,"v")/pleins.length))} par mois.`:"La courbe se remplit au fil des mois."}</p></div>
   <div class="door" style="margin-top:12px"><div class="section-head"><h3>Les dépenses du mois</h3><span class="cnt">${L.length}</span></div><div class="items" style="margin-top:6px">${L.map(ligne).join("")||`<p class="hint" style="margin:0">Rien de noté ce mois-ci.</p>`}</div></div>
-  <div class="door" style="margin-top:12px"><details ${(S.budgets||[]).some(x=>x.id===h)?"":"open"}><summary style="cursor:pointer;font-weight:700">⚙️ Nos revenus et nos budgets (on les écrit une fois)</summary>
-    <p class="hint">Ils valent pour tous les mois ; on les change quand la vie change.</p>
-    <h4 style="margin:10px 0 4px">Revenus du mois</h4>${(d.revenus||[]).map((r,i)=>`<div class="row" style="gap:6px;margin-bottom:6px"><input data-bdrn="${i}" value="${esc(r.n||"")}" style="flex:2"><input data-bdrm="${i}" inputmode="decimal" value="${+r.montant||""}" placeholder="€" style="flex:1;min-width:90px"></div>`).join("")}
-    <button class="react" id="bd-rev+" style="margin-bottom:8px">+ un revenu</button>
-    <h4 style="margin:10px 0 4px">Budget par catégorie (€ par mois)</h4><div style="display:grid;gap:6px">${cats.map((c,i)=>`<label class="bd-set"><span>${esc(c.ico+" "+c.n)}</span><input data-bdb="${i}" inputmode="decimal" value="${+c.budget||""}" placeholder="0"></label>`).join("")}</div>
-    <label class="bd-set" style="margin-top:8px"><span>💚 Objectif d'épargne par mois</span><input id="bd-ep" inputmode="decimal" value="${+d.epargne||""}" placeholder="0"></label>
+  <div class="door" style="margin-top:12px"><details id="bd-reglages" ${d.enregistre&&!S.bdReglages?"":"open"}><summary style="cursor:pointer;font-weight:700">⚙️ Nos revenus et nos budgets (on les écrit une fois)</summary>
+    <p class="hint">Ils valent pour tous les mois ; on les change quand la vie change. Une ligne de revenu vidée disparaît à l'enregistrement.</p>
+    <h4 style="margin:10px 0 4px">Revenus du mois</h4>${revenus.map((r,i)=>`<div class="row" style="gap:6px;margin-bottom:6px"><input data-bdrn="${i}" value="${esc(r.n||"")}" placeholder="Ex. salaire de Loulou" style="flex:2"><input data-bdrm="${i}" inputmode="decimal" value="${nb(r.montant)||""}" placeholder="€" style="flex:1;min-width:90px"></div>`).join("")}
+    <button class="react" id="bd-rev-plus" style="margin-bottom:8px">+ un revenu</button>
+    <h4 style="margin:10px 0 4px">Budget par catégorie (€ par mois)</h4><div style="display:grid;gap:6px">${cats.map((c,i)=>`<label class="bd-set"><span>${esc(c.ico+" "+c.n)}</span><input data-bdb="${i}" inputmode="decimal" value="${nb(c.budget)||""}" placeholder="0"></label>`).join("")}</div>
+    <label class="bd-set" style="margin-top:8px"><span>💚 Objectif d'épargne par mois</span><input id="bd-ep" inputmode="decimal" value="${d.epargne||""}" placeholder="0"></label>
     <div class="row" style="margin-top:10px"><button class="btn accent" style="flex:none" id="bd-save">Enregistrer</button></div></details></div>
-  <div class="row" style="margin-top:12px;gap:6px"><button class="react" style="flex:none" id="bd-a4">🖨 Fiche A4 du mois</button></div>
+  <div class="row tight" style="margin-top:12px;gap:6px"><button class="react" id="bd-a4">🖨 Fiche A4 du mois</button></div>
   <p class="hint" style="margin-top:10px">Privé au foyer ${esc(HM[h].n)} : les autres foyers ne voient pas cette page sans votre code.</p>`; }
-function faBudget(ym){ const cats=bdCats(), L=bdLignes(ym), rev=bdRevenus(), dep=bdSomme(L);
-  const corps=`<table><tr><th>Revenus</th><th>Dépensés</th><th>Mis de côté</th></tr><tr><td><b>${faE(bdE(rev))}</b></td><td><b>${faE(bdE(dep))}</b></td><td><b>${faE(bdE(rev-dep))}</b></td></tr></table>
-  <h2>Par catégorie</h2><table><tr><th style="width:46%">Catégorie</th><th>Budget</th><th>Réel</th><th>Écart</th></tr>${cats.map(c=>{ const r=bdSomme(L.filter(x=>x.cat===c.k)), b=+c.budget||0; return `<tr><td>${faE(c.ico+" "+c.n)}</td><td>${b?faE(bdE(b)):""}</td><td>${faE(bdE(r))}</td><td>${b?faE(bdE(b-r)):""}</td></tr>`; }).join("")}</table>
-  <h2>Le détail</h2><table><tr><th style="width:18%">Date</th><th>Quoi</th><th style="width:22%">Catégorie</th><th style="width:16%">Montant</th></tr>${L.map(x=>{ const c=cats.find(c=>c.k===x.cat); return `<tr><td>${faE(fmtD(x.date,{day:"numeric",month:"short"}))}</td><td>${faE(x.note)}</td><td>${faE(c?c.n:x.cat)}</td><td>${faE(eur(x.montant))}</td></tr>`; }).join("")}</table>`;
-  return faDoc("Le budget du mois", `${HM[myHome()]?HM[myHome()].n:""} · ${fmtD(ym+"-01",{month:"long",year:"numeric"})}`, corps, false); }
+function faBudget(ym){ const {d,L,parCat,cat,dep,rev}=bdMoisDonnees(ym);
+  const corps=`<table><tr><th>Revenus</th><th>Dépensés</th><th>Restent</th></tr><tr><td><b>${faE(bdE(rev))}</b></td><td><b>${faE(bdE(dep))}</b></td><td><b>${faE(bdE(rev-dep))}</b></td></tr></table>
+  <h2>Par catégorie</h2><table><tr><th style="width:46%">Catégorie</th><th>Budget</th><th>Réel</th><th>Écart</th></tr>${d.categories.map(c=>{ const r=parCat[c.k]||0, b=nb(c.budget); return `<tr><td>${faE(c.ico+" "+c.n)}</td><td>${b?faE(bdE(b)):""}</td><td>${faE(bdE(r))}</td><td>${b?faE(bdE(b-r)):""}</td></tr>`; }).join("")}</table>
+  <h2>Le détail</h2><table><tr><th style="width:18%">Date</th><th>Quoi</th><th style="width:22%">Catégorie</th><th style="width:16%">Montant</th></tr>${L.map(x=>{ const c=cat.get(x.cat); return `<tr><td>${faE(fmtD(x.date,{day:"numeric",month:"short"}))}</td><td>${faE(x.note)}</td><td>${faE(c?c.n:x.cat)}</td><td>${faE(eur(x.montant))}</td></tr>`; }).join("")}</table>`;
+  return faDoc("Le budget du mois", `${HM[myHome()]?HM[myHome()].n:""} · ${mwNom(ym)}`, corps, false); }
 plusRoute("budget-mois",renderBudgetMois,"Budget du mois","regarde le budget");
 (()=>{ const st=document.createElement("style"); st.textContent=`
 .bd-c{display:grid;gap:4px}.bd-ch{display:flex;justify-content:space-between;gap:10px;align-items:baseline;flex-wrap:wrap}
@@ -11447,19 +11718,18 @@ plusRoute("budget-mois",renderBudgetMois,"Budget du mois","regarde le budget");
 .bd-bar em{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--ink);opacity:.45}
 .bd-set{display:grid;grid-template-columns:minmax(0,1fr) 110px;gap:8px;align-items:center;font-weight:500}`; document.head.appendChild(st); })();
 BIND_PLUS.push(root=>{
-  root.querySelectorAll("[data-bdgo]").forEach(b=>b.onclick=()=>{ const v=b.dataset.bdgo; if(v==="0") S.bdYm=null; else { const d=new Date((S.bdYm||todayIso().slice(0,7))+"-01T12:00:00"); d.setMonth(d.getMonth()+ +v); const m=iso(d).slice(0,7); S.bdYm=m>=todayIso().slice(0,7)?null:m; } render(); });
-  const num=v=>{ const n=parseFloat(String(v||"").replace(/\s/g,"").replace(",",".")); return isFinite(n)?Math.round(n*100)/100:0; };
-  const add=root.querySelector("#bd-add"); if(add) add.onclick=async()=>{ const m=num(root.querySelector("#bd-m").value); if(!m){ toast("Indique le montant"); return; }
+  root.querySelectorAll("[data-bdgo]").forEach(b=>b.onclick=()=>{ const v=b.dataset.bdgo, m=v==="0"?null:mwDecale(S.bdYm||bdMois(),+v); S.bdYm=m&&m<bdMois()?m:null; render(); });
+  const add=root.querySelector("#bd-add"); if(add) add.onclick=async()=>{ const m=nb(root.querySelector("#bd-m").value); if(!m){ toast("Indique le montant"); return; }
     const d={home:myHome(),date:root.querySelector("#bd-d").value||todayIso(),montant:m,cat:root.querySelector("#bd-c").value,note:root.querySelector("#bd-n").value.trim(),by:S.me,at:Date.now()};
     if(await save("depensesfoyer",d)) toast(eur(m)+" noté"); };
   root.querySelectorAll("[data-bddel]").forEach(b=>b.onclick=()=>{ if(confirm("Retirer cette dépense ?")) remove("depensesfoyer",b.dataset.bddel); });
-  const lire=()=>{ const d=bdDoc(), cats=bdCats().map((c,i)=>{ const inp=root.querySelector(`[data-bdb="${i}"]`); return {...c,budget:inp?num(inp.value):(+c.budget||0)}; });
-    const revenus=(d.revenus||[]).map((r,i)=>({n:(root.querySelector(`[data-bdrn="${i}"]`)||{}).value||r.n||"",montant:num((root.querySelector(`[data-bdrm="${i}"]`)||{}).value)}));
-    return {categories:cats,revenus,epargne:num((root.querySelector("#bd-ep")||{}).value)}; };
-  const ecrire=async(x,msg)=>{ const d={...x,by:S.me,at:Date.now()}; if(await save("budgets",d,myHome())){ const i=S.budgets.findIndex(y=>y.id===myHome()); if(i>=0) S.budgets[i]={id:myHome(),...d}; else S.budgets.push({id:myHome(),...d}); toast(msg); render(); } };
-  const sv=root.querySelector("#bd-save"); if(sv) sv.onclick=()=>ecrire(lire(),"Budget enregistré");
-  const rp=root.querySelector("#bd-rev\\+"); if(rp) rp.onclick=()=>{ const x=lire(); x.revenus.push({n:"Autre revenu",montant:0}); ecrire(x,"Ligne ajoutée"); };
-  const a4=root.querySelector("#bd-a4"); if(a4) a4.onclick=()=>{ const ym=S.bdYm||todayIso().slice(0,7); faTelecharger("budget-"+ym+".html",faBudget(ym)); };
+  const reg=root.querySelector("#bd-reglages"); if(reg) reg.ontoggle=()=>{ S.bdReglages=reg.open; };
+  const plus=root.querySelector("#bd-rev-plus"); if(plus) plus.onclick=()=>{ S.bdRevPlus=(S.bdRevPlus||0)+1; S.bdReglages=true; render(); };
+  const sv=root.querySelector("#bd-save"); if(sv) sv.onclick=async()=>{ const v=s=>((root.querySelector(s)||{}).value||"").trim();
+    const revenus=[...root.querySelectorAll("[data-bdrn]")].map(inp=>({n:inp.value.trim(),montant:nb(v(`[data-bdrm="${inp.dataset.bdrn}"]`))})).filter(r=>r.n||r.montant);
+    const categories=bdDoc().categories.map((c,i)=>({k:c.k,n:c.n,ico:c.ico,budget:nb(v(`[data-bdb="${i}"]`))}));
+    if(await ecrireFoyer("budgets",{categories,revenus,epargne:nb(v("#bd-ep"))})){ S.bdRevPlus=0; toast("Budget enregistré"); } };
+  const a4=root.querySelector("#bd-a4"); if(a4) a4.onclick=()=>{ const ym=S.bdYm||bdMois(); faTelecharger("budget-"+ym+".html",faBudget(ym)); };
 });
 /* ---------- Rendu ---------- */
 
